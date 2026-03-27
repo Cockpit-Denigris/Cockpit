@@ -7497,6 +7497,16 @@ function admTab(tab, btn){
   if(tab==='list') admRenderList();
 }
 
+// Helper: admin pode excluir um usuário?
+// Regras: não pode excluir a si mesmo, não pode excluir outro admin
+function _admCanDel(id){
+  if(!id || id==='__admin__') return false;
+  if(_currentUser && id===_currentUser.id) return false; // não pode excluir a si mesmo
+  const u = authGetAll().find(u=>u.id===id);
+  if(u && u.role==='admin') return false; // não pode excluir outro admin
+  return true;
+}
+
 function admRenderList(){
   const wrap=document.getElementById('adm-user-list'); if(!wrap) return;
   const users=authGetAll();
@@ -7515,12 +7525,12 @@ function admRenderList(){
       <div><span class="role-badge ${ROLE_LABELS[u.role].cls}">${ROLE_LABELS[u.role].icon} ${ROLE_LABELS[u.role].lbl}</span></div>
       <div style="font-size:11px;color:var(--txt3)">${u.id==='__admin__'?'<span style="color:var(--txt3);font-size:10px">Padrão do sistema</span>':''}</div>
       <div style="display:flex;gap:4px;justify-content:flex-end">
-        ${u.id!=='__admin__'?`<button class="ibtn" onclick="admEditUser('${u.id}')">✏️</button>
-        <button class="ibtn" style="color:var(--red)" onclick="admDeleteUser('${u.id}')">🗑</button>`:''}
+        ${u.id!=='__admin__'?`<button class="ibtn" onclick="admEditUser('${u.id}')">&#x270F;&#xFE0F;</button>
+        ${_admCanDel(u.id)?`<button class="ibtn" style="color:var(--red)" onclick="admDeleteUser('${u.id}')">&#x1F5D1;</button>`
+                            :`<span style="font-size:9px;color:var(--txt3)">${_currentUser&&u.id===_currentUser.id?'voc&ecirc;':'admin'}</span>`}`:''}
       </div>
     </div>`).join('');
 }
-
 function admRoleChange(){
   const role=document.getElementById('adm-role').value;
   document.getElementById('adm-filial-block').style.display=role==='filial'?'':'none';
@@ -7582,7 +7592,12 @@ function admEditUser(id){
 }
 
 function admDeleteUser(id){
-  if(!confirm('Excluir este usuário?')) return;
+  // Proteções por regra de negócio
+  if(id==='__admin__'){ alert('O Administrador padrão do sistema não pode ser excluído.'); return; }
+  if(_currentUser && id===_currentUser.id){ alert('Você não pode excluir seu próprio usuário.'); return; }
+  const target = authGetUsers().find(u=>u.id===id);
+  if(target && target.role==='admin'){ alert('Administradores só podem ser excluídos por outro Administrador com acesso direto ao sistema.'); return; }
+  if(!confirm(`Excluir o usuário "${target?.nome||id}"?\nEsta ação não pode ser desfeita.`)) return;
   const users=authGetUsers().filter(u=>u.id!==id);
   authSaveUsers(users);
   admRenderList();
@@ -9708,13 +9723,47 @@ function gsSaveConfig(){
 
 // ── Buscar CSV do Google Sheets via fetch ──────────────────────
 async function gsFetchCSV(url){
-  // Converte URL de publicação para URL direta de CSV
   // Adiciona timestamp para evitar cache do browser
   const sep = url.includes('?') ? '&' : '?';
   const fetchUrl = url + sep + 't=' + Date.now();
-  const resp = await fetch(fetchUrl);
-  if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return await resp.text();
+
+  // Tentativa 1: fetch direto (funciona quando o arquivo é aberto por servidor HTTP)
+  try {
+    const resp = await fetch(fetchUrl);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.text();
+  } catch(e1) {
+    // Se "Failed to fetch": provavelmente CORS ou arquivo aberto localmente (file://)
+    // Tentativa 2: XMLHttpRequest (às vezes contorna CORS em alguns browsers)
+    try {
+      return await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', fetchUrl, true);
+        xhr.timeout = 15000;
+        xhr.onload = () => {
+          if(xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+          else reject(new Error(`HTTP ${xhr.status}`));
+        };
+        xhr.onerror  = () => reject(new Error('Falha de rede (CORS ou sem internet)'));
+        xhr.ontimeout= () => reject(new Error('Timeout — verifique sua conexão'));
+        xhr.send();
+      });
+    } catch(e2) {
+      // Diagnóstico mais claro para o usuário
+      const isLocal = window.location.protocol === 'file:';
+      if(isLocal){
+        throw new Error(
+          'Arquivo aberto localmente (file://) bloqueia requisições externas.\n\n' +
+          '✅ Solução: Abra o arquivo via servidor local ou use o Google Chrome com:\n' +
+          '   --disable-web-security --user-data-dir=/tmp/chrome'
+        );
+      }
+      throw new Error('Failed to fetch — verifique:\n' +
+        '1. A planilha está publicada como CSV (Arquivo → Publicar na Web)\n' +
+        '2. A URL foi copiada corretamente\n' +
+        '3. Você tem acesso à internet');
+    }
+  }
 }
 
 // ── Parser CSV → array de objetos ─────────────────────────────
@@ -9759,13 +9808,36 @@ async function gsLoadDMS(env){
   const csv = await gsFetchCSV(url);
   const rows = gsParseCSV(csv);
   if(!rows.length) return 0;
+
+  // parseDMSRows já detecta filial de cada linha (coluna Filial/Empresa)
+  // Suporta: uma aba com todas as filiais mescladas OU uma filial por arquivo
   const parsed = parseDMSRows(rows, env);
-  if(parsed && parsed.length){
-    DB[env] = parsed;
-    ANOS_LIST[env] = [...new Set(parsed.map(r=>r.Ano).filter(Boolean))].sort();
-    return parsed.length;
-  }
-  return 0;
+  if(!parsed || !parsed.length) return 0;
+
+  // Remover dados DMS antigos de todas as filiais presentes no novo arquivo
+  // (preserva DRE, OS e outros fontes)
+  const filaisNovos = new Set(parsed.map(r=>r.Filial).filter(Boolean));
+  const anosNovos   = new Set(parsed.map(r=>r.Ano).filter(Boolean));
+
+  DB[env] = DB[env].filter(r=>{
+    if(r._fonte!=='dms') return true; // preserva DRE, OS, etc.
+    // Remove apenas registros da mesma filial+ano que estão no novo arquivo
+    if(filaisNovos.has(r.Filial) && anosNovos.has(r.Ano)) return false;
+    return true;
+  });
+  DB[env].push(...parsed);
+
+  // Atualizar lista de anos
+  [...new Set(DB[env].map(r=>+r.Ano))].forEach(a=>{
+    if(!ANOS_LIST.includes(a)) ANOS_LIST.push(a);
+  });
+  ANOS_LIST.sort((a,b)=>a-b);
+
+  syncSegmentos(DB[env]);
+  syncOSFromFile(DB[env]);
+  syncOsTypes(DB[env]);
+
+  return parsed.length;
 }
 
 // ── Processar Estoque vindo do Google Sheets ──────────────────
