@@ -785,6 +785,8 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
       <button class="ibtn" onclick="exportData()" id="btn-export" title="Exportar todos os dados para transferir a uma nova versão">⬇ Exportar Dados</button>
       <button class="ibtn" onclick="exportHTMLSnapshot()" id="btn-html-snap" title="Gerar HTML com todos os dados embutidos para compartilhar em rede" style="color:#4ade80;border-color:#4ade8044">📤 Gerar HTML</button>
       <button class="ibtn" onclick="importData()" id="btn-import" title="Importar dados exportados de versão anterior" style="color:var(--acc);border-color:var(--acc)44">⬆ Importar Dados</button>
+      <button class="ibtn" onclick="openGSConfig()" id="btn-gs-config" title="Configurar Google Sheets como fonte de dados" style="color:#34a853;border-color:#34a85344">🔗 Google Sheets</button>
+      <button class="ibtn" onclick="gsRefreshAll()" id="btn-gs-refresh" title="Buscar dados atualizados do Google Sheets" style="color:#4285f4;border-color:#4285f444;display:none">🔄 Atualizar Dados</button>
       <button class="ibtn" onclick="openDataStatus('mb')" id="btn-status">📋 Status</button>
       <button class="ibtn" onclick="openMeta('mb')" id="btn-metas">🎯 Metas</button>
       <button class="ibtn prime-mb" onclick="openUp('mb')" id="btn-upload-mb">⬆ Carregar Dados</button>
@@ -1023,6 +1025,20 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
         <span class="flbl">Mobilidade</span>
         <div class="chips" id="chips-est-mob-mb"></div>
         <div class="fsep"></div>
+        <span class="flbl">Grupo</span>
+        <div style="position:relative;display:inline-block">
+          <button id="btn-grp-mb" onclick="toggleGrpDropdown('mb')" class="chip" style="font-size:10px;padding:3px 10px;display:flex;align-items:center;gap:4px">
+            <span id="btn-grp-lbl-mb">Todos</span> <span style="font-size:8px">▼</span>
+          </button>
+          <div id="grp-dropdown-mb" style="display:none;position:absolute;top:100%;left:0;z-index:600;background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:8px;min-width:220px;max-height:320px;overflow-y:auto;box-shadow:0 8px 32px #0006;margin-top:4px">
+            <div style="display:flex;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--brd)">
+              <button onclick="grpSelAll('mb',true)"  style="flex:1;background:var(--mb);color:#fff;border:none;border-radius:6px;padding:4px;font-size:10px;cursor:pointer">Todos</button>
+              <button onclick="grpSelAll('mb',false)" style="flex:1;background:var(--card2);color:var(--txt2);border:1px solid var(--brd);border-radius:6px;padding:4px;font-size:10px;cursor:pointer">Nenhum</button>
+            </div>
+            <div id="chips-est-grp-mb" style="display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+        </div>
+        <div class="fsep"></div>
         <button class="ibtn prime-mb" onclick="openEstUpload('mb')" style="margin-left:auto">⬆ Carregar Estoque</button>
       </div>
 
@@ -1076,6 +1092,15 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
             <div class="tbl-wrap" id="est-pivot-wrap-mb"></div>
           </div>
 
+          <!-- Curva ABCD — resumo com percentuais -->
+          <div class="cc mb12" id="est-curva-abcd-mb">
+            <div class="cc-hd">
+              <div><div class="cc-title">🎯 Curva ABC/D do Estoque</div><div class="cc-sub">Distribuição do valor em estoque por curva · % do total</div></div>
+              <span class="badge bg2" id="est-curva-abcd-badge-mb">—</span>
+            </div>
+            <div id="est-curva-abcd-wrap-mb"></div>
+          </div>
+
           <!-- Evolução do Estoque DRE — último indicador -->
           <div class="cc mb12" id="est-dre-ind-mb" style="display:none">
             <div class="cc-hd" style="flex-wrap:wrap;gap:8px">
@@ -1119,6 +1144,7 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
             <div class="tbl-wrap"><table class="mtbl" id="est-tbl-mb">
               <thead><tr>
                 <th class="thl" style="width:110px">Código</th>
+                <th style="color:var(--pur);font-size:10px;white-space:nowrap" title="Est. Técnico (item mandatório)">Téc.</th>
                 <th class="thl">Descrição</th>
                 <th class="thl">Filial</th>
                 <th class="thl">Grupo</th>
@@ -1127,7 +1153,6 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
                 <th>Qtd</th>
                 <th>Custo Unit.</th>
                 <th>Valor Total</th>
-                <th>Mand.</th>
                 <th>Últ.Venda</th>
               </tr></thead>
               <tbody id="est-tbody-mb"></tbody>
@@ -1319,7 +1344,9 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
             </div>
             <div class="tbl-wrap"><table class="mtbl">
               <thead><tr>
-                <th class="thl">Código</th><th class="thl">Descrição</th>
+                <th class="thl">Código</th>
+                <th style="color:var(--pur);font-size:10px;white-space:nowrap" title="Est. Técnico (item mandatório)">Téc.</th>
+                <th class="thl">Descrição</th>
                 <th>Curva</th><th>Mobilidade</th><th>Qtd</th><th>Valor</th><th>Dias</th><th>Últ.Venda</th>
               </tr></thead>
               <tbody id="est-det-tbody-mb"></tbody>
@@ -1386,6 +1413,20 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
     <div class="fsep"></div>
     <span class="flbl">Mobilidade</span>
     <div class="chips" id="chips-est-mob-mc"></div>
+    <div class="fsep"></div>
+    <span class="flbl">Grupo</span>
+    <div style="position:relative;display:inline-block">
+      <button id="btn-grp-mc" onclick="toggleGrpDropdown('mc')" class="chip" style="font-size:10px;padding:3px 10px;display:flex;align-items:center;gap:4px">
+        <span id="btn-grp-lbl-mc">Todos</span> <span style="font-size:8px">▼</span>
+      </button>
+      <div id="grp-dropdown-mc" style="display:none;position:absolute;top:100%;left:0;z-index:600;background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:8px;min-width:220px;max-height:320px;overflow-y:auto;box-shadow:0 8px 32px #0006;margin-top:4px">
+        <div style="display:flex;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--brd)">
+          <button onclick="grpSelAll('mc',true)"  style="flex:1;background:var(--mc);color:#000;border:none;border-radius:6px;padding:4px;font-size:10px;cursor:pointer">Todos</button>
+          <button onclick="grpSelAll('mc',false)" style="flex:1;background:var(--card2);color:var(--txt2);border:1px solid var(--brd);border-radius:6px;padding:4px;font-size:10px;cursor:pointer">Nenhum</button>
+        </div>
+        <div id="chips-est-grp-mc" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+    </div>
     <div class="fsep"></div>
     <button class="ibtn prime-mc" onclick="openEstUpload('mc')" style="margin-left:auto">⬆ Carregar Estoque</button>
   </div>
@@ -1468,11 +1509,41 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
         <div id="est-kpis-mc" class="g4 mb12"></div>
         <div class="cc mb12"><div class="cc-hd"><div class="cc-title">🚦 Mobilidade por Linha de Produto</div><span class="badge bmc" id="est-mob-badge-mc">—</span></div><div id="est-mob-cards-mc"></div><div id="est-mob-mix-wrap-mc"></div></div>
         <div class="cc mb12" style="display:none"><div class="cc-hd"><div class="cc-title">🗂 Mix por Grupo × Curva</div><span class="badge bmc" id="est-mix-badge-mc">—</span></div><div id="est-pivot-mc"></div></div>
+        <div class="cc mb12" id="est-curva-abcd-mc"><div class="cc-hd"><div><div class="cc-title">🎯 Curva ABC/D do Estoque</div><div class="cc-sub">Distribuição do valor em estoque por curva · % do total</div></div><span class="badge bmc" id="est-curva-abcd-badge-mc">—</span></div><div id="est-curva-abcd-wrap-mc"></div></div>
         <div class="cc mb12"><div class="cc-hd"><div><div class="cc-title">📦 Evolução do Estoque</div></div><span class="badge bmc" id="est-dre-badge-mc">—</span></div><div class="chips" id="est-dre-anos-mc" style="margin-bottom:8px"></div><div class="chips" id="est-dre-fils-mc" style="margin-bottom:8px"></div><div id="est-dre-tbl-mc"></div></div>
         <div class="cc mb12"><div class="cc-hd"><div class="cc-title">⏱ Prazo Médio de Estoque</div></div><div id="est-prazo-mc"></div></div>
       </div>
       <div id="est-pg-itens-mc" style="display:none">
-        <div class="cc"><div class="cc-hd"><div class="cc-title">📋 Itens em Estoque</div><div style="display:flex;gap:6px;align-items:center"><button class="ibtn" onclick="exportEstCSV('mc')" style="font-size:10px">⬇ CSV</button><span class="badge bmc" id="est-itens-badge-mc">—</span></div></div><div id="est-tbl-mc"></div></div>
+        <div class="cc"><div class="cc-hd"><div class="cc-title">📋 Itens em Estoque</div><div style="display:flex;gap:6px;align-items:center"><button class="ibtn" onclick="exportEstCSV('mc')" style="font-size:10px">⬇ CSV</button><span class="badge bmc" id="est-itens-badge-mc">—</span></div></div>
+        <div id="est-itens-summary-mc" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <input id="est-search-mc" type="text" placeholder="🔍 Código / descrição / grupo…" oninput="renderEstTabela('mc')" style="flex:1;min-width:200px;background:var(--card2);border:1px solid var(--brd);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--txt);outline:none">
+          <select id="est-sort-mc" onchange="renderEstTabela('mc')" style="background:var(--card2);border:1px solid var(--brd);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--txt);outline:none">
+            <option value="valor_desc">Valor ↓</option>
+            <option value="dias_desc">Dias ↓</option>
+            <option value="dias_asc">Dias ↑</option>
+            <option value="qtd_desc">Qtd ↓</option>
+          </select>
+          <span id="est-tbl-sub-mc" style="font-size:11px;color:var(--txt3)"></span>
+        </div>
+        <div class="tbl-wrap"><table class="mtbl" id="est-tbl-mc">
+          <thead><tr>
+            <th class="thl" style="width:110px">Código</th>
+            <th style="color:var(--pur);font-size:10px;white-space:nowrap" title="Est. Técnico (item mandatório)">Téc.</th>
+            <th class="thl">Descrição</th>
+            <th class="thl">Filial</th>
+            <th class="thl">Grupo</th>
+            <th>Curva</th>
+            <th>Mobilidade</th>
+            <th>Qtd</th>
+            <th>Custo Unit.</th>
+            <th>Valor Total</th>
+            <th>Últ.Venda</th>
+          </tr></thead>
+          <tbody id="est-tbody-mc"></tbody>
+        </table></div>
+        <div id="est-tbl-more-mc" style="text-align:center;padding:10px;font-size:11px;color:var(--txt3)"></div>
+        </div>
       </div>
       <div id="est-pg-cruz-mc" style="display:none">
         <div class="cc"><div class="cc-hd"><div><div class="cc-title">🔀 Cruzamento Curvas</div><div class="cc-sub">Itens em C/D em uma filial que têm demanda A/B em outra</div></div><div style="display:flex;gap:6px;align-items:center"><button class="ibtn" onclick="exportEstCruzCSV('mc')" style="font-size:10px">⬇ CSV</button><span class="badge bmc">CRUZ</span></div></div>
@@ -1681,7 +1752,7 @@ table.meta-tbl th{background:var(--card2);font-size:10px;color:var(--txt3);text-
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <button class="ibtn" onclick="exportCidadeTemplate()" style="padding:7px 14px;font-size:12px">⬇ Baixar Template</button>
           <span style="font-size:11px;color:var(--txt3);align-self:center">
-            Atualmente: <strong style="color:var(--grn)" id="cid-count">${Object.keys(CIDADE_MAP).length} cidades</strong> cadastradas
+            Atualmente: <strong style="color:var(--grn)" id="cid-count">0 cidades</strong> cadastradas
           </span>
         </div>
         <div class="upz" style="padding:20px" onclick="document.getElementById('fInCid').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondrop="event.preventDefault();this.classList.remove('drag');importCidadeFile(event.dataTransfer.files[0])" ondragleave="this.classList.remove('drag')">
@@ -1792,6 +1863,20 @@ let TIPOS_OS_LIST=[];
 let OS_DESC={};
 
 // Chamado após importar o arquivo Por Tipo de OS
+// Reparar rows OS com filial='—' baseado em osAnos e dados disponíveis
+// Usado automaticamente após upload se filial foi inferida
+function repairOSFilial(env, filialCorreta){
+  if(!filialCorreta || filialCorreta==='—') return 0;
+  let count=0;
+  (DB[env]||[]).forEach(r=>{
+    if(r._fonte==='os' && (r.Filial==='—'||!r.Filial)){
+      r.Filial=filialCorreta;
+      count++;
+    }
+  });
+  return count;
+}
+
 function syncOSFromFile(rows){
   rows.forEach(r=>{
     if(!r.Tipo_OS || r._fonte!=='os') return;
@@ -1873,6 +1958,8 @@ const CIDADE_BASE = [
 function initCidadeMap(){
   CIDADE_MAP={};
   CIDADE_BASE.forEach(([c,f])=>{ CIDADE_MAP[c]={filial:f,areaOp:true}; });
+  const el=document.getElementById('cid-count');
+  if(el) el.textContent=Object.keys(CIDADE_MAP).length+' cidades';
 }
 initCidadeMap();
 
@@ -1902,6 +1989,22 @@ function _cidadeImportDone(count){
   if(DB.mc&&DB.mc.length) renderAll('mc');
 }
 
+// Helper: detecta filial pelo campo empresa ou fallback no CIDADE_BASE
+function _detectFilialCidade(empresa, cidadeNorm){
+  const emp = empresa.toUpperCase();
+  // 1) Pelo campo empresa
+  if(emp.includes('ITAPEVA')) return 'Itapeva';
+  if(emp.includes('ALUMIN'))  return 'Alumínio';
+  if(emp.includes('SOROCABA') || emp.includes('MATRIZ')) return 'Sorocaba';
+  if(emp.includes('ITU') && !emp.includes('ITAPEVA') && !emp.includes('ALUMIN')) return 'Itu';
+  // 2) Fallback: checar no CIDADE_BASE se a cidade já tem filial definida
+  const baseEntry = CIDADE_BASE.find(([c])=>c===cidadeNorm);
+  if(baseEntry) return baseEntry[1];
+  // 3) Texto livre como filial
+  const filialLivre = emp.replace('DE NIGRIS - ','').replace('DE NIGRIS','').replace(/[-–]/g,'').trim();
+  return filialLivre || 'Sorocaba';
+}
+
 function importCidadeFile(file){
   if(!file) return;
   const ext=(file.name||'').split('.').pop().toLowerCase();
@@ -1915,41 +2018,44 @@ function importCidadeFile(file){
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      // Iniciar com as cidades padrão — CIDADE_BASE tem prioridade sobre o arquivo
       CIDADE_MAP={};
+      const _baseSet = new Set(CIDADE_BASE.map(([c])=>c));
+      CIDADE_BASE.forEach(([c,f])=>{ CIDADE_MAP[c]={filial:f,areaOp:true}; });
       raw.forEach(row=>{
-        const empresa=String(row.empresa||row.Empresa||'').toUpperCase();
+        const empresa=String(row.empresa||row.Empresa||row.Filial||row.filial||'').toUpperCase();
         const cidade=String(row.cidade||row.Cidade||'').toUpperCase()
           .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
         if(!cidade) return;
-        let filial='';
-        if(empresa.includes('ITAPEVA')) filial='Itapeva';
-        else if(empresa.includes('ITU')) filial='Itu';
-        else if(empresa.includes('SOROCABA')) filial='Sorocaba';
-        else if(empresa.includes('ALUMIN')) filial='Alumínio';
-        else filial=empresa.replace('DE NIGRIS - ','').replace('DE NIGRIS','').trim();
+        // Cidades do CIDADE_BASE: NÃO sobrescrever (filial já está correta)
+        if(_baseSet.has(cidade)) return;
+        // Novas cidades do arquivo: detectar filial e adicionar
+        const filial=_detectFilialCidade(empresa, cidade);
         CIDADE_MAP[cidade]={filial, areaOp:true};
       });
+      saveState(); // persistir novo mapa de cidades
       _cidadeImportDone(Object.keys(CIDADE_MAP).length);
     };
     r.readAsArrayBuffer(file);
   }
 }
 function _parseCidadeCSV(txt){
+  // Iniciar com as cidades padrão — CIDADE_BASE tem prioridade sobre o arquivo
   CIDADE_MAP={};
+  const _baseSetCSV = new Set(CIDADE_BASE.map(([c])=>c));
+  CIDADE_BASE.forEach(([c,f])=>{ CIDADE_MAP[c]={filial:f,areaOp:true}; });
   const lines=txt.split('\n').map(l=>l.trim()).filter(Boolean);
   lines.slice(1).forEach(line=>{
-    const [empresa,cidade]=(line.includes(';')?line.split(';'):line.split(','));
-    const c=(cidade||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const parts = line.includes(';') ? line.split(';') : line.split(',');
+    const empresa = (parts[0]||'').toUpperCase();
+    const c = (parts[1]||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
     if(!c) return;
-    const emp=(empresa||'').toUpperCase();
-    let filial='';
-    if(emp.includes('ITAPEVA')) filial='Itapeva';
-    else if(emp.includes('ITU')) filial='Itu';
-    else if(emp.includes('SOROCABA')) filial='Sorocaba';
-    else if(emp.includes('ALUMIN')) filial='Alumínio';
-    else filial=emp.replace('DE NIGRIS - ','').replace('DE NIGRIS','').trim();
+    // Cidades do CIDADE_BASE: NÃO sobrescrever
+    if(_baseSetCSV.has(c)) return;
+    const filial = _detectFilialCidade(empresa, c);
     CIDADE_MAP[c]={filial, areaOp:true};
   });
+  saveState();
   _cidadeImportDone(Object.keys(CIDADE_MAP).length);
 }
 
@@ -2039,7 +2145,18 @@ function clrPreview(){
     });
   }
 
-  const total=toRemove.length+metasCount;
+  // Count EST_DATA items affected
+  let estCount=0;
+  const clearEst2 = f.tipos.includes('all');
+  if(clearEst2){
+    const snaps = EST_DATA[env]?.snapshots||{};
+    Object.values(snaps).forEach(arr=>{
+      if(f.fil==='all'||f.fil==='') estCount+=arr.length;
+      else estCount+=arr.filter(i=>i.filial===f.fil).length;
+    });
+  }
+
+  const total=toRemove.length+metasCount+estCount;
   if(!total){
     preview.innerHTML=`<span style="color:var(--txt3)">Nenhum registro encontrado com os filtros selecionados.</span>`;
     if(btn) btn.disabled=true;
@@ -2097,10 +2214,43 @@ function clrExecutar(){
     keysToRemove.forEach(k=>{ delete METAS[k]; removedMetas++; });
   }
 
+  // ── Limpar EST_DATA (estoque) quando tipo=all ou sem filtro de mês/ano ──
+  // Estoque não tem filtro por mês/ano granular — limpa por filial ou tudo
+  let removedEstSnaps=0;
+  const clearEst = f.tipos.includes('all');
+  if(clearEst){
+    const snaps = EST_DATA[env]?.snapshots || {};
+    const snapKeys = Object.keys(snaps);
+    if(f.fil==='all' || f.fil===''){
+      // Limpar todos os snapshots
+      snapKeys.forEach(k=>{ delete snaps[k]; });
+      removedEstSnaps = snapKeys.length;
+    } else {
+      // Filtrar itens da filial selecionada de cada snapshot
+      snapKeys.forEach(k=>{
+        const before2 = snaps[k].length;
+        snaps[k] = snaps[k].filter(i=>i.filial !== f.fil);
+        removedEstSnaps += before2 - snaps[k].length;
+        // Se snapshot ficou vazio, remover
+        if(!snaps[k].length) delete snaps[k];
+      });
+    }
+    saveEstState();
+    // Re-inicializar filtros de estoque
+    if(Object.keys(EST_DATA[env]?.snapshots||{}).length){
+      initEstFilters(env);
+    } else {
+      renderEstoque(env);
+    }
+  }
+
   const status=document.getElementById('clr-status');
   const btn=document.getElementById('clr-exec-btn');
   const preview=document.getElementById('clr-preview');
-  if(status) status.textContent=`✅ Removidos: ${removedRows.toLocaleString('pt-BR')} registros${removedMetas>0?' + '+removedMetas+' metas':''}.`;
+  const totalRemovido = removedRows + (removedEstSnaps>0?removedEstSnaps:0);
+  const estMsg = removedEstSnaps>0 ? ` · ${removedEstSnaps} itens de estoque` : '';
+  const metaMsg = removedMetas>0 ? ` · ${removedMetas} metas` : '';
+  if(status) status.textContent=`✅ Removidos: ${removedRows.toLocaleString('pt-BR')} registros${estMsg}${metaMsg}.`;
   if(btn) btn.disabled=true;
   if(preview) preview.innerHTML=`<span style="color:var(--txt3)">Nenhum registro encontrado com os filtros selecionados.</span>`;
 
@@ -2124,9 +2274,10 @@ function clrCidades(){
   } else {
     Object.keys(CIDADE_MAP).forEach(k=>delete CIDADE_MAP[k]);
     const st=document.getElementById('cid-status');
-    if(st){ st.textContent=`✅ Mapa zerado. 0 cidades.`; setTimeout(()=>{if(st)st.textContent='';},3000); }
+    if(st){ st.textContent='✅ Mapa zerado. 0 cidades.'; setTimeout(()=>{if(st)st.textContent='';},3000); }
     const cnt=document.getElementById('cid-count'); if(cnt) cnt.textContent='0 cidades';
   }
+  saveState(); // persistir estado do CIDADE_MAP (zerado ou padrão)
   renderAll('mb'); renderAll('mc');
 }
 
@@ -2321,7 +2472,9 @@ function _setSaveIndicator(txt,col,fade){
 }
 
 async function saveState(){
-  const payload=JSON.stringify({DB,METAS,ts:Date.now()});
+  // Incluir CIDADE_MAP no payload — persiste estado zerado ou customizado
+  const cidadeMapData = Object.keys(CIDADE_MAP).length > 0 ? CIDADE_MAP : '__EMPTY__';
+  const payload=JSON.stringify({DB,METAS,ts:Date.now(),CIDADE_MAP:cidadeMapData});
   const bytes=new Blob([payload]).size;
   const d=new Date();
   const hm=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -2359,6 +2512,16 @@ async function loadState(){
     DB.mb=[...(payload.DB.mb||[])];
     DB.mc=[...(payload.DB.mc||[])];
     Object.assign(METAS, payload.METAS||{});
+    // Restaurar CIDADE_MAP — '__EMPTY__' significa zerado pelo usuário
+    if(payload.CIDADE_MAP !== undefined){
+      Object.keys(CIDADE_MAP).forEach(k=>delete CIDADE_MAP[k]);
+      if(payload.CIDADE_MAP !== '__EMPTY__'){
+        Object.assign(CIDADE_MAP, payload.CIDADE_MAP);
+      }
+      // Atualizar contador visual se modal estiver aberto
+      const cidEl = document.getElementById('cid-count');
+      if(cidEl) cidEl.textContent = Object.keys(CIDADE_MAP).length + ' cidades';
+    }
     ['mb','mc'].forEach(env=>{
       [...new Set(DB[env].map(r=>+r.Ano))].forEach(a=>{ if(!ANOS_LIST.includes(a)) ANOS_LIST.push(a); });
     });
@@ -2366,6 +2529,13 @@ async function loadState(){
     syncSegmentos(DB.mb); syncSegmentos(DB.mc);
     syncOSFromFile(DB.mb); syncOSFromFile(DB.mc);
     if(typeof syncOsTypes==='function'){ syncOsTypes(DB.mb); syncOsTypes(DB.mc); }
+    // Verificar se há dados OS com filial='—' e avisar
+    ['mb','mc'].forEach(env=>{
+      const semFilial=(DB[env]||[]).filter(r=>r._fonte==='os'&&(r.Filial==='—'||!r.Filial));
+      if(semFilial.length>0){
+        console.warn('OS sem filial:',semFilial.length,'registros em',env,'— use repairOSFilial() para corrigir');
+      }
+    });
     const d=new Date(payload.ts);
     const fmt=`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
     _setSaveIndicator(`💾 ${fmt}`,null,false);
@@ -2385,6 +2555,7 @@ function clearState(){
   DB={mb:[],mc:[]};
   METAS={};
   ANOS_LIST.length=0;
+  initCidadeMap(); // resetar para as 57 cidades padrão
   ['mb','mc'].forEach(env=>renderAll(env));
   _setSaveIndicator('🗑 Limpo',null,false);
   setTimeout(()=>_setSaveIndicator('💾',null,false),2000);
@@ -2392,7 +2563,7 @@ function clearState(){
 
 function exportData(){
   try{
-    const payload={DB, METAS, EST_DATA:{mb:{snapshots:EST_DATA.mb.snapshots||{}},mc:{snapshots:EST_DATA.mc.snapshots|{}}}, exportedAt: new Date().toISOString(), version:'v14'};
+    const payload={DB, METAS, EST_DATA:{mb:{snapshots:EST_DATA.mb.snapshots||{}},mc:{snapshots:EST_DATA.mc.snapshots||{}}}, exportedAt: new Date().toISOString(), version:'v14'};
     const json=JSON.stringify(payload);
     const blob=new Blob([json],{type:'application/json'});
     const url=URL.createObjectURL(blob);
@@ -2978,19 +3149,47 @@ function addFilial(env){
 /* ═══════════════════════════════════════════════
    DATA HELPERS
 ═══════════════════════════════════════════════ */
+// Normaliza filial para comparação sem acento/case
+function _normFil(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+// Cache de filiais normalizadas para performance
+const _filNormCache = {};
+function _filNormSet(env){
+  const key = [...F[env].filial].sort().join('|');
+  if(!_filNormCache[env] || _filNormCache[env].key !== key){
+    _filNormCache[env] = { key, set: new Set([...F[env].filial].map(_normFil)) };
+  }
+  return _filNormCache[env].set;
+}
+
 function _baseFilter(env,r){
   if(r._fonte==='os') return false;  // OS rows são exclusivos da tabela Tipo OS — nunca alimentam outros módulos
-  if(!(F[env].filial.has('all')||F[env].filial.has(r.Filial)))return false;
+  if(!F[env].filial.has('all') && !_filNormSet(env).has(_normFil(r.Filial))) return false;
   if(!(F[env].mes.has('all')||F[env].mes.has(String(r.Mês_Num))))return false;
   if(!(F[env].depto.has('all')||F[env].depto.has(r.Canal)))return false;
   return true;
 }
 // Rows exclusivos de Tipo OS (PDF "Resumo de Faturamento por Tipo de OS")
 function getRowsOS(env){
+  const depto = F[env].depto;
+  // Lógica de filtro por canal:
+  // - Balcão/Telepeças → APENAS VB (Venda Balcão Peças)
+  // - Oficina/Funilaria → TODAS exceto VB
+  // - Todos (all) → todas as linhas
+  const canalFiltrado = depto.has('all') ? null : [...depto][0] || null;
+  // Normalizar filiais selecionadas para comparação robusta (sem acento, lowercase)
+  const normF = v => String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const filSel = F[env].filial;
+  const filNorms = filSel.has('all') ? null : new Set([...filSel].map(normF));
+
   return DB[env].filter(r=>{
     if(r._fonte!=='os') return false;
-    if(!(F[env].filial.has('all')||F[env].filial.has(r.Filial))) return false;
-    if(!(F[env].mes.has('all')||F[env].mes.has(String(r.Mês_Num)))) return false;
+    // Filial: normalizar para garantir match mesmo com variações de acento/case
+    if(filNorms !== null && !filNorms.has(normF(r.Filial))) return false;
+    // Mês_Num=0 significa arquivo anual (todos os meses) — sempre passa
+    if(r.Mês_Num !== 0 && !(F[env].mes.has('all')||F[env].mes.has(String(r.Mês_Num)))) return false;
+    // Filtro de canal para Tipo OS
+    if(canalFiltrado==='Telepeças/Balcão' && r.Tipo_OS!=='VB') return false;
+    if(canalFiltrado==='Oficina/Funilaria' && r.Tipo_OS==='VB') return false;
     return true;
   });
 }
@@ -3616,9 +3815,22 @@ function renderCmp(env,allRows){
   if(!wrap) return;
   if(anos.length<1){ wrap.innerHTML=''; return; }
 
+  // Período justo: usar os meses do ano mais recente como base de comparação
+  // Ex: se 2026 tem só Jan-Mar, comparar Jan-Mar de 2024 e 2025 também
+  const _anoMaisRecente = anos[anos.length-1];
+  const _mesesAnoRecente = new Set(
+    allRows.filter(r=>String(r.Ano)===_anoMaisRecente).map(r=>r.Mês_Num)
+  );
+  const _temMesFiltro = _mesesAnoRecente.size > 0 && _mesesAnoRecente.size < 12;
+
   const acum={};
   anos.forEach(ano=>{
-    acum[ano]=getCmpValue(allRows.filter(r=>String(r.Ano)===ano),key);
+    let rowsAno = allRows.filter(r=>String(r.Ano)===ano);
+    // Para comparação justa: filtrar pelos mesmos meses do ano mais recente
+    if(_temMesFiltro && ano !== _anoMaisRecente){
+      rowsAno = rowsAno.filter(r=>_mesesAnoRecente.has(r.Mês_Num));
+    }
+    acum[ano]=getCmpValue(rowsAno,key);
   });
 
   if(anos.length===1){
@@ -3631,11 +3843,19 @@ function renderCmp(env,allRows){
     return;
   }
 
+  // Label do período acumulado — mostra meses quando filtrado
+  const _msCmp = [...new Set(allRows.map(r=>r.Mês_Num))].sort((a,b)=>a-b);
+  const _mesMaxCmp = _msCmp.length>0 ? _msCmp[_msCmp.length-1] : 12;
+  const _mesMinCmp = _msCmp.length>0 ? _msCmp[0] : 1;
+  const _periodoLabel = (_mesMinCmp===1 && _mesMaxCmp===12)
+    ? 'Acumulado Ano'
+    : `Acum. ${MN[_mesMinCmp-1]}→${MN[_mesMaxCmp-1]}`;
+
   let h=`<div style="overflow-x:auto"><table class="mtbl"><thead>
-    <tr class="hdr"><th class="thl">Acumulado</th>`;
-  anos.forEach(ano=>{ h+=`<th style="text-align:right">${ano}</th>`; });
+    <tr class="hdr"><th class="thl" style="color:var(--txt3);font-size:10px;letter-spacing:.5px;text-transform:uppercase">${_periodoLabel}</th>`;
+  anos.forEach(ano=>{ h+=`<th style="text-align:right;font-size:13px;font-weight:800">${ano}</th>`; });
   for(let i=1;i<anos.length;i++){
-    h+=`<th style="text-align:center;border-left:2px solid var(--brd);white-space:nowrap">Δ ${anos[i-1]}→${String(anos[i]).slice(2)}</th>`;
+    h+=`<th style="text-align:center;border-left:2px solid var(--brd);white-space:nowrap">Δ ${anos[i-1]}→${anos[i]}</th>`;
   }
   h+=`</tr></thead><tbody><tr>`;
   anos.forEach(ano=>{
@@ -4114,7 +4334,16 @@ function renderTblOS(rows){
     totFatByAno[ano]=data.reduce((s,d)=>s+(d.byAno[ano]?.fat||0),0)||1;
   });
 
-  let h=`<div class="tbl-wrap"><table class="mtbl"><thead><tr class="hdr"><th class="thl">Código</th><th class="thl">Descrição</th>`;
+  // Indicador de filtro de canal ativo
+  const canalAtivo = F.mb.depto.has('all') ? null : [...F.mb.depto][0] || null;
+  const canalBadge = canalAtivo === 'Telepeças/Balcão'
+    ? '<span style="background:#4285f422;color:#4285f4;border:1px solid #4285f444;border-radius:6px;padding:2px 10px;font-size:10px;font-weight:700;margin-left:8px">🏪 Balcão / Telepeças — exibindo apenas VB</span>'
+    : canalAtivo === 'Oficina/Funilaria'
+    ? '<span style="background:var(--ora)22;color:var(--ora);border:1px solid var(--ora)44;border-radius:6px;padding:2px 10px;font-size:10px;font-weight:700;margin-left:8px">🔧 Oficina / Funilaria — excluindo VB</span>'
+    : '';
+
+  let h=`<div style="margin-bottom:6px;min-height:20px">${canalBadge}</div>`;
+  h+=`<div class="tbl-wrap"><table class="mtbl"><thead><tr class="hdr"><th class="thl">Código</th><th class="thl">Descrição</th>`;
   selectedAnos.forEach(ano=>{
     h+=`<th colspan="3" style="text-align:center;border-left:2px solid var(--brd)">${ano}</th>`;
   });
@@ -4138,12 +4367,14 @@ function renderTblOS(rows){
     h+=`</tr>`;
   });
 
-  // Total
+  // Total — usa apenas os tipos visíveis em data (respeita filtro de canal)
+  const tiposVisiveis = new Set(data.map(d=>d.t));
   h+=`<tr class="tr-tot"><td class="tdl text-a" colspan="2" style="font-size:13px">TOTAL (${data.length} tipos)</td>`;
   selectedAnos.forEach(ano=>{
     const tot=data.reduce((s,d)=>s+(d.byAno[ano]?.fat||0),0);
     const totQtd=data.reduce((s,d)=>s+(d.byAno[ano]?.qtd||0),0);
-    const totLbR=rowsOS.filter(r=>String(r.Ano)===ano).reduce((s,r)=>s+(r.LB_Real_R||0),0);
+    // LB_Real_R apenas das linhas visíveis (filtro de canal aplicado)
+    const totLbR=rowsOS.filter(r=>String(r.Ano)===ano && tiposVisiveis.has(r.Tipo_OS)).reduce((s,r)=>s+(r.LB_Real_R||0),0);
     const lbTot=tot>0?totLbR/tot*100:0;
     const lbCol=lbTot>=30?'var(--grn)':lbTot>=20?'var(--acc)':'var(--red)';
     h+=`<td class="mono text-a" style="border-left:2px solid var(--brd);font-size:13px">${fRFull(tot)}</td>`;
@@ -4574,12 +4805,19 @@ function exportCliCSV(env){
     if(r.Ano>cliMap[key].lastAno||(r.Ano===cliMap[key].lastAno&&r.Mês_Num>cliMap[key].lastMes)){
       cliMap[key].lastAno=r.Ano;cliMap[key].lastMes=r.Mês_Num;cliMap[key].nome=r.Cliente;
     }
-    // Capturar cidade/área op da última ocorrência
-    if(r.Cidade&&!cliMap[key].cidade) cliMap[key].cidade=r.Cidade;
-    const ciInfo=CIDADE_MAP[String(r.Cidade||'').toUpperCase()];
-    if(ciInfo){
-      if(!cliMap[key].areaOp) cliMap[key].areaOp=ciInfo.areaOp?'Sim':'Não';
-      if(!cliMap[key].filialAoP) cliMap[key].filialAoP=ciInfo.filial||'';
+    // Cidade/área op: sempre usar a compra mais recente
+    if(r.Cidade && r.Cidade!=='—' && r.Cidade!==''){
+      const _isRecente = r.Ano>cliMap[key].lastAno ||
+        (r.Ano===cliMap[key].lastAno && r.Mês_Num>=cliMap[key].lastMes);
+      if(!cliMap[key].cidade || _isRecente){
+        cliMap[key].cidade = r.Cidade;
+        const _ci = getCidadeInfo(r.Cidade);
+        const _temMapa = Object.keys(CIDADE_MAP).length > 0;
+        if(_temMapa){
+          cliMap[key].areaOp    = _ci ? 'Sim' : 'Não';
+          cliMap[key].filialAoP = _ci ? (_ci.filial||'') : '';
+        }
+      }
     }
     const vend=r.Vendedor&&r.Vendedor!=='—'?r.Vendedor:null;
     if(vend){
@@ -4743,14 +4981,19 @@ function renderClientes(env){
     const si=cliStatusInfo(mesesInativo);
     // Resolve cidade from CIDADE_MAP
     const cidadeInfo = getCidadeInfo(d.cidade);
+    const temMapaCidades = Object.keys(CIDADE_MAP).length > 0;
     let areaOp, areaFilial='';
-    if(d.cidade){
-      // DMS has city data — cross-reference with area map
-      areaOp = cidadeInfo ? 'Sim' : 'Não';
-      areaFilial = cidadeInfo ? cidadeInfo.filial : '';
-    } else {
-      // No city in DMS — show '—' (cannot determine)
+    if(!d.cidade || d.cidade==='—'){
+      // Sem cidade no DMS — não é possível determinar
       areaOp = '—';
+    } else if(!temMapaCidades){
+      // Mapa de cidades não carregado — não é possível determinar
+      areaOp = '—';
+    } else {
+      // Cidade presente + mapa carregado → determinar com precisão
+      // Usar getCidadeInfo que normaliza acento/case corretamente
+      areaOp    = cidadeInfo ? 'Sim' : 'Não';
+      areaFilial = cidadeInfo ? (cidadeInfo.filial||'') : '';
     }
     const cidadeDisplay = d.cidade || '';
     return {
@@ -5091,11 +5334,19 @@ function renderEmpty(env){
   const msg=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:16px;color:var(--txt3)">
     <div style="font-size:48px">📂</div>
     <div style="font-size:16px;font-weight:700;color:var(--txt2)">Nenhum dado carregado</div>
-    <div style="font-size:12px;text-align:center;max-width:380px;line-height:1.7">
+    <div style="font-size:12px;text-align:center;max-width:420px;line-height:1.8">
       Clique em <strong style="color:var(--${env==='mb'?'mb':'mc'})">⬆ Carregar Dados</strong> para importar os arquivos.<br>
       <span style="color:var(--txt3);font-size:11px">Formatos: DMS · DRE Gerencial · Orçamento · Por Tipo OS</span>
     </div>
-    <button class="ibtn prime-${env}" onclick="openUp('${env}')" style="margin-top:8px;font-size:13px;padding:10px 24px">⬆ Carregar Dados</button>
+    <button class="ibtn prime-${env}" onclick="openUp('${env}')" style="font-size:13px;padding:10px 24px">⬆ Carregar Dados</button>
+    <div style="background:var(--card2);border:1px solid var(--brd);border-radius:10px;padding:14px 20px;max-width:420px;text-align:center;margin-top:4px">
+      <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:6px">📦 Migrando de uma versão anterior?</div>
+      <div style="font-size:11px;color:var(--txt3);line-height:1.7;margin-bottom:10px">
+        No HTML antigo clique em <strong style="color:var(--txt2)">⬇ Exportar Dados</strong> para gerar um arquivo .json.<br>
+        Depois clique abaixo para importar esse arquivo aqui.
+      </div>
+      <button class="ibtn" onclick="importData()" style="color:var(--acc);border-color:var(--acc)44;font-size:12px;padding:7px 16px">⬆ Importar Dados (.json)</button>
+    </div>
   </div>`;
   // Limpar KPIs
   const kw=document.getElementById('kpis-'+env); if(kw) kw.innerHTML='';
@@ -5394,6 +5645,9 @@ function resolveDREConflict(escolha, filiais, anos, meses, env){
 function openUp(env){
   upEnv=env||CURENV;
   document.getElementById('up-modal-title').textContent=`Carregar Dados · ${upEnv==='mb'?'Peças MB':'Pneus MC'}`;
+  // Atualizar contador de cidades ao abrir o modal
+  const cidEl=document.getElementById('cid-count');
+  if(cidEl) cidEl.textContent=Object.keys(CIDADE_MAP).length+' cidades';
   // Reset filial selector to auto
   setUpFilial('auto');
   // Reset modo to acumular
@@ -5547,10 +5801,10 @@ function mapCanal(depto){
 // Mapeamento Filial DMS → nome no dashboard
 // Mapeamento fixo das 4 unidades do grupo De Nigris
 const FILIAL_MAP=[
-  {keys:['ITAPEVA'],            nome:'Itapeva'},
-  {keys:['ALUMINIO','ALUMÍNIO','ALUM'],  nome:'Alumínio'},
-  {keys:['SOROCABA','MATRIZ'],   nome:'Sorocaba'},
-  {keys:['ITU'],                 nome:'Itu'},  // depois de ITAPEVA e ALUMINIO
+  {keys:['ITAPEVA'],                        nome:'Itapeva'},
+  {keys:['ALUMINIO','ALUMÍNIO','ALUM','ALUMINÍO','ALUMINI'], nome:'Alumínio'},
+  {keys:['SOROCABA','MATRIZ'],              nome:'Sorocaba'},
+  {keys:['ITU'],                            nome:'Itu'},
 ];
 function mapFilial(filialDMS){
   const f=String(filialDMS||'').toUpperCase().trim();
@@ -5657,8 +5911,16 @@ function parseDMSRows(rawRows, env){
     const vlrItem   = getNum(row, COL_MAP.vlrItem);
     const custo     = getNum(row, COL_MAP.custo);
     const situacaoRaw = getStr(row, COL_MAP.situacao).toLowerCase();
-    const cancelado = situacaoRaw.includes('cancel') || situacaoRaw === 'c' || situacaoRaw === 'cancelado';
-    if(cancelado) return; // ignorar NFs canceladas
+    // Cancelamentos: NF nunca existiu → excluir completamente
+    const cancelado = situacaoRaw.includes('cancel') ||
+                      situacaoRaw === 'c' ||
+                      situacaoRaw === 'cancelado' ||
+                      situacaoRaw === 'cancelada';
+    if(cancelado) return;
+    // Devoluções: NF existiu mas foi devolvida → entra com valor negativo (subtrai do fat.)
+    // Se o DMS exporta devolução com valor positivo, negar o valor para corrigir
+    const isDevolucao = situacaoRaw.includes('devolu');
+    if(isDevolucao && fatLiq > 0) fatLiq = -fatLiq; // garantir que devolução é negativa
     const cliente   = getStr(row, COL_MAP.cliente) || '—';
     const cnpjCpf   = getStr(row, COL_MAP.cnpjCpf) || '';
     const cidadeRaw = getStr(row, COL_MAP.cidade) || '';
@@ -5914,20 +6176,40 @@ function parseOSFile(wb, filialOverride, env){
   const aoa = XLSX.utils.sheet_to_json(sh,{header:1, defval:'', raw:false});
   if(!aoa.length) return {rows:[], meta:{}};
 
-  // Extrair metadados do cabeçalho
+  // Extrair metadados do cabeçalho — aceita variações do campo de filial
   let filialRaw='', periodoStr='', mes=0, ano=0;
-  for(let i=0;i<Math.min(8,aoa.length);i++){
+  for(let i=0;i<Math.min(12,aoa.length);i++){
     const r=aoa[i];
-    const r0=String(r[0]||'').trim();
+    const r0=String(r[0]||'').trim().toLowerCase();
     const r1=String(r[1]||'').trim();
-    if(r0==='Concessionária:') filialRaw=r1;
-    if(r0==='Período:') periodoStr=r1;
+    // Aceita: "Concessionária:", "Concessionaria:", "Empresa:", "Unidade:", "Filial:"
+    if(/^concession|^empresa|^unidade|^filial/.test(r0)) filialRaw=r1;
+    if(r0==='período:' || r0==='periodo:') periodoStr=r1;
+    // Também verifica se o valor está na coluna 0 junto com a label (ex: "Concessionária: DN ALUMINIO")
+    if(!filialRaw){
+      const full=String(r[0]||'');
+      const m=full.match(/(?:concession[aá]ria|empresa|unidade)[:\s]+(.+)/i);
+      if(m) filialRaw=m[1].trim();
+    }
+    if(!periodoStr){
+      const full=String(r[0]||'');
+      const m=full.match(/(?:per[ií]odo)[:\s]+(.+)/i);
+      if(m) periodoStr=m[1].trim();
+    }
   }
 
-  // Filial
-  const filialNome = filialOverride && filialOverride!=='auto'
-    ? filialOverride
-    : mapFilial(filialRaw||'');
+  // Filial: prioridade = 1) override manual, 2) campo do cabeçalho, 3) nome do arquivo
+  let filialNome;
+  if(filialOverride && filialOverride!=='auto'){
+    filialNome = filialOverride;
+  } else if(filialRaw){
+    filialNome = mapFilial(filialRaw);
+  } else {
+    // Fallback: tentar extrair do nome do arquivo pelo wb (SheetNames ou propriedades)
+    // wb não tem nome do arquivo — usar '—' e avisar
+    filialNome = '—';
+    console.warn('parseOSFile: campo Concessionária não encontrado no arquivo. Selecione a filial manualmente.');
+  }
 
   // Período: '01/01/2025 à 31/12/2025' → detectar mês e ano
   // Se cobre o ano inteiro → ano={X}, mes=0 (todos)
@@ -5986,7 +6268,7 @@ function parseOSFile(wb, filialOverride, env){
 
     osRows.push({
       Env:env, Filial:filialNome,
-      Ano:ano, Mês_Num:mes||1,
+      Ano:ano, Mês_Num:mes,  // 0 = arquivo anual (abrange todos os meses); >0 = mês específico
       Canal: cod==='VB' ? 'Telepeças/Balcão' : 'Oficina/Funilaria',
       Tipo_OS: cod,
       OS_Desc: desc,
@@ -6590,9 +6872,16 @@ function pFile(file){
 
           if(!osRows.length) throw new Error('Nenhum dado de OS encontrado. Verifique se o arquivo é o relatório "Resumo de Faturamento" por tipo de OS.');
 
+          // Se filial não detectada automaticamente, verificar se foi selecionada manualmente
+          if(meta.filialNome === '—'){
+            throw new Error('Filial não identificada no arquivo (campo Concessionária/Empresa não encontrado).\n\nSelecione a filial correta no seletor acima (Sorocaba, Itu, Itapeva ou Alumínio) e tente novamente.');
+          }
+
           filaisNovas = new Set([meta.filialNome]);
           parsed = osRows;
-          tipo = `Por Tipo de OS · ${meta.filialNome} · ${meta.periodoStr}`;
+          // Destacar se filial foi detectada automaticamente ou selecionada manualmente
+          const filDetectada = filialSel && filialSel!=='auto' ? '(manual)' : '(auto)';
+          tipo = `Por Tipo de OS · ${meta.filialNome} ${filDetectada} · ${meta.periodoStr}`;
 
         } else if(isMetaFile(wb)){
           // ── Arquivo de Orçamento/Metas ──
@@ -7345,8 +7634,8 @@ let _estDetItems = [];
 
 // Filter state
 const EST_F = {
-  mb: { periodos: new Set(), filiais: new Set(), tec: new Set(['SIM','NÃO']), curvas: new Set(), mobs: new Set() },
-  mc: { periodos: new Set(), filiais: new Set(), tec: new Set(['SIM','NÃO']), curvas: new Set(), mobs: new Set() }
+  mb: { periodos: new Set(), filiais: new Set(), tec: new Set(['SIM','NÃO']), curvas: new Set(), mobs: new Set(), grupos: new Set() },
+  mc: { periodos: new Set(), filiais: new Set(), tec: new Set(['SIM','NÃO']), curvas: new Set(), mobs: new Set(), grupos: new Set() }
 };
 
 const MES_NOMES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -7562,7 +7851,8 @@ function getEstFiltered(env){
     (f.filiais.size===0||f.filiais.has(i.filial))&&
     (f.tec.size===0||f.tec.has(i.tec))&&
     (f.curvas.size===0||f.curvas.has(i.curva))&&
-    (f.mobs.size===0||f.mobs.has(i.mobCls))
+    (f.mobs.size===0||f.mobs.has(i.mobCls))&&
+    (f.grupos.size===0||(!f.grupos.has('__NONE__')&&f.grupos.has(i.grupo||'Sem Grupo')))
   );
 }
 
@@ -7584,6 +7874,7 @@ function initEstFilters(env){
   EST_F[env].mobs=new Set();   // vazio = todos passam
   EST_F[env].curvas=new Set(); // vazio = todos passam
   EST_F[env].tec=new Set(['SIM','NÃO']);
+  EST_F[env].grupos=new Set(); // vazio = todos passam
 
   // Filial chips
   const fc=document.getElementById(`chips-est-fil-${env}`);
@@ -7651,6 +7942,86 @@ function initEstFilters(env){
       mc2.appendChild(ch);
     });
   }
+
+  // Grupo chips — dropdown com checkboxes
+  const gc=document.getElementById(`chips-est-grp-${env}`);
+  if(gc){
+    gc.innerHTML='';
+    const grupos=[...new Set(allItems.map(i=>i.grupo||'Sem Grupo'))].sort();
+    grupos.forEach(g=>{
+      const row=document.createElement('label');
+      row.style.cssText='display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:11px;color:var(--txt2);transition:background .1s';
+      row.onmouseover=()=>row.style.background='var(--card2)';
+      row.onmouseout=()=>row.style.background='transparent';
+      const cb=document.createElement('input');
+      cb.type='checkbox';
+      // marcado = grupo VISÍVEL (no set de inclusão quando algum selecionado)
+      // Se grupos.size===0 = todos visíveis (estado padrão)
+      cb.checked = EST_F[env].grupos.size===0 || EST_F[env].grupos.has(g);
+      cb.style.cssText='accent-color:var(--mb);width:13px;height:13px;cursor:pointer';
+      cb.onchange=()=>{
+        // Ao marcar/desmarcar, reconstruir set de inclusão a partir dos checkboxes
+        const gc2=document.getElementById('chips-est-grp-'+env);
+        const checked=[...gc2.querySelectorAll('input[type=checkbox]')]
+          .filter(c=>c.checked)
+          .map(c=>c.parentElement.querySelector('span').textContent);
+        const total=gc2.querySelectorAll('input').length;
+        // Se todos marcados → vazio (todos passam), senão → set dos marcados
+        EST_F[env].grupos = checked.length===total ? new Set() : new Set(checked);
+        updateGrpBtn(env);
+        renderEstoque(env);
+      };
+      const lbl=document.createElement('span');
+      lbl.textContent=g;
+      row.appendChild(cb); row.appendChild(lbl);
+      gc.appendChild(row);
+    });
+    updateGrpBtn(env);
+  }
+}
+
+function toggleGrpDropdown(env){
+  const dd=document.getElementById('grp-dropdown-'+env);
+  if(!dd) return;
+  const isOpen=dd.style.display!=='none';
+  // Fechar todos os outros dropdowns primeiro
+  ['mb','mc'].forEach(e=>{ const d=document.getElementById('grp-dropdown-'+e); if(d) d.style.display='none'; });
+  dd.style.display=isOpen?'none':'';
+  if(!isOpen){
+    // Fechar ao clicar fora
+    setTimeout(()=>{
+      document.addEventListener('click',function closeDD(ev){
+        if(!dd.contains(ev.target)&&ev.target.id!=='btn-grp-'+env){
+          dd.style.display='none';
+          document.removeEventListener('click',closeDD);
+        }
+      });
+    },10);
+  }
+}
+
+function grpSelAll(env, selectAll){
+  const gc=document.getElementById('chips-est-grp-'+env);
+  if(gc){
+    gc.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cb.checked=selectAll; });
+  }
+  // Todos marcados → grupos vazio (todos passam); nenhum → set vazio também mas bloqueia tudo
+  // Para "Nenhum": usar set com string impossível para bloquear tudo
+  EST_F[env].grupos = selectAll ? new Set() : new Set(['__NONE__']);
+  updateGrpBtn(env);
+  renderEstoque(env);
+}
+
+function updateGrpBtn(env){
+  const lbl=document.getElementById('btn-grp-lbl-'+env);
+  if(!lbl) return;
+  const gc=document.getElementById('chips-est-grp-'+env);
+  const total=gc?gc.querySelectorAll('input').length:0;
+  const checked=gc?gc.querySelectorAll('input:checked').length:0;
+  const isNone=EST_F[env].grupos.has('__NONE__');
+  if(isNone||checked===0) lbl.textContent='Nenhum';
+  else if(EST_F[env].grupos.size===0||checked===total) lbl.textContent='Todos';
+  else lbl.textContent=checked+' grupo'+(checked>1?'s':'');
 }
 
 // ── Main render ──────────────────────────────────────────────
@@ -7676,6 +8047,7 @@ function renderEstoque(env){
     (_rf.mobs.size===0||_rf.mobs.has(i.mobCls))
   );
   renderEstKPIs(env,allItemsFil,items);
+  renderEstCurvaABCD(env,items);   // card Curva ABCD — obedece todos os filtros
   // renderEstEvolucao — removido
   // renderEstCurva    — removido
   renderEstMobMix(env,items);
@@ -7952,15 +8324,61 @@ function renderEstDreTable(env,dreRows){
   </table>`;
 }
 
+// ── Curva ABCD — card com percentuais antes da Evolução ────────
+function renderEstCurvaABCD(env, items){
+  const wrap = document.getElementById(`est-curva-abcd-wrap-${env}`);
+  const bdg  = document.getElementById(`est-curva-abcd-badge-${env}`);
+  if(!wrap) return;
+
+  const totalVal = items.reduce((s,i)=>s+i.valor,0)||1;
+  const totalItens = items.length||1;
+  const byC = {A:{val:0,cnt:0},B:{val:0,cnt:0},C:{val:0,cnt:0},D:{val:0,cnt:0}};
+  items.forEach(i=>{ if(byC[i.curva]){ byC[i.curva].val+=i.valor; byC[i.curva].cnt++; } });
+
+  if(bdg){
+    const pAB = ((byC.A.val+byC.B.val)/totalVal*100).toFixed(0);
+    bdg.textContent = `${pAB}% A+B`;
+  }
+
+  // Cards individuais por curva
+  const cardsHtml = ['A','B','C','D'].map(c=>{
+    const pctVal  = (byC[c].val/totalVal*100);
+    const pctCnt  = (byC[c].cnt/totalItens*100);
+    const cor     = CURVA_COL[c];
+    const barW    = Math.min(100,pctVal).toFixed(1);
+    return `<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid ${cor}33;border-radius:10px;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:18px;font-weight:900;color:${cor}">Curva ${c}</span>
+        <span style="font-size:22px;font-weight:900;color:${cor}">${pctVal.toFixed(1)}%</span>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:4px">${fRFull(byC[c].val)}</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:8px">${byC[c].cnt.toLocaleString('pt-BR')} itens · ${pctCnt.toFixed(1)}% do total</div>
+      <div style="height:4px;background:var(--brd);border-radius:2px">
+        <div style="height:4px;width:${barW}%;background:${cor};border-radius:2px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Linha de totais
+  const totalRow = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px 0;border-top:1px solid var(--brd);margin-top:4px;font-size:12px;color:var(--txt3)">
+      <span>Total em estoque:</span>
+      <span style="font-weight:700;color:var(--txt);font-size:14px">${fRFull(totalVal)}</span>
+      <span>${items.length.toLocaleString('pt-BR')} itens</span>
+    </div>`;
+
+  wrap.innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;padding:4px 0">${cardsHtml}</div>${totalRow}`;
+}
+
 function renderEstKPIs(env,allItems,filteredItems){
-  // allItems      = sem filtro de técnico → card 💰 Valor Total (grand total fixo de referência)
-  // filteredItems = com filtro de técnico → todos os demais cards obedecem o filtro SIM/NÃO
+  // filteredItems = com filtro de técnico → TODOS os 5 cards obedecem o filtro SIM/NÃO
+  // Todos os cards obedecem o filtro completo incluindo EST. TÉCNICO
   const f=filteredItems||allItems;
   const wrap=document.getElementById(`est-kpis-${env}`); if(!wrap) return;
-  const totalVal=allItems.reduce((s,i)=>s+i.valor,0);   // grand total — não muda com filtro
-  const nPNAll=[...new Set(allItems.map(i=>i.codL||i.cod).filter(Boolean))].length;
-  const filVal=f.reduce((s,i)=>s+i.valor,0);             // total filtrado
+  const totalVal=f.reduce((s,i)=>s+i.valor,0);
   const nPN=[...new Set(f.map(i=>i.codL||i.cod).filter(Boolean))].length;
+  // Card Técnico: itens SIM dentro do conjunto já filtrado por tec
+  // SIM+NÃO → mostra todos os SIM; só SIM → mostra SIM; só NÃO → R$ 0
   const tecItems=f.filter(i=>i.tec==='SIM');
   const valTec=tecItems.reduce((s,i)=>s+i.valor,0);
   const nTecPN=[...new Set(tecItems.map(i=>i.codL||i.cod).filter(Boolean))].length;
@@ -7971,11 +8389,11 @@ function renderEstKPIs(env,allItems,filteredItems){
   const vL=len.reduce((s,i)=>s+i.valor,0);
   const vP=par.reduce((s,i)=>s+i.valor,0);
   const KPIS=[
-    {icon:'💰',val:fRFull(totalVal),   lbl:'Valor Total em Estoque',     color:'var(--mb)', sub:`${nPNAll.toLocaleString('pt-BR')} part-numbers (total)`},
+    {icon:'💰',val:fRFull(totalVal),   lbl:'Valor Total em Estoque',     color:'var(--mb)', sub:`${nPN.toLocaleString('pt-BR')} part-numbers`},
     {icon:'📋',val:fRFull(valTec),     lbl:'Estoque Técnico',            color:'var(--pur)',sub:`${nTecPN.toLocaleString('pt-BR')} part-numbers mandatórios`},
-    {icon:'🟢',val:fRFull(vR),         lbl:'Estoque Rápido (1–179d)',    color:'var(--grn)',sub:`${rap.length.toLocaleString('pt-BR')} itens · ${filVal>0?(vR/filVal*100).toFixed(1):'0'}%`},
-    {icon:'🟡',val:fRFull(vL),         lbl:'Estoque Lento (180–359d)',   color:'var(--acc)',sub:`${len.length.toLocaleString('pt-BR')} itens · ${filVal>0?(vL/filVal*100).toFixed(1):'0'}%`},
-    {icon:'🔴',val:fRFull(vP),         lbl:'Estoque Parado (≥360d)',     color:'var(--red)',sub:`${par.length.toLocaleString('pt-BR')} itens · ${filVal>0?(vP/filVal*100).toFixed(1):'0'}%`},
+    {icon:'🟢',val:fRFull(vR),         lbl:'Estoque Rápido (1–179d)',    color:'var(--grn)',sub:`${rap.length.toLocaleString('pt-BR')} itens · ${totalVal>0?(vR/totalVal*100).toFixed(1):'0'}%`},
+    {icon:'🟡',val:fRFull(vL),         lbl:'Estoque Lento (180–359d)',   color:'var(--acc)',sub:`${len.length.toLocaleString('pt-BR')} itens · ${totalVal>0?(vL/totalVal*100).toFixed(1):'0'}%`},
+    {icon:'🔴',val:fRFull(vP),         lbl:'Estoque Parado (≥360d)',     color:'var(--red)',sub:`${par.length.toLocaleString('pt-BR')} itens · ${totalVal>0?(vP/totalVal*100).toFixed(1):'0'}%`},
   ];
   wrap.innerHTML=KPIS.map(k=>`
     <div class="kcard">
@@ -8266,6 +8684,7 @@ function renderEstTabela(env){
   const tb=document.getElementById(`est-tbody-${env}`); if(!tb) return;
   tb.innerHTML=rows.slice(0,50).map(i=>`<tr>
     <td class="tdl mono" style="font-size:10px">${i.codL||i.cod}</td>
+    <td style="text-align:center">${i.tec==='SIM'?'<span class="tag tb2" style="font-size:9px">SIM</span>':'<span style="color:var(--txt3);font-size:10px">—</span>'}</td>
     <td class="tdl" style="max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${i.desc}">${i.desc}</td>
     <td class="tdl">${i.filial}</td>
     <td class="tdl" style="font-size:11px;color:var(--txt2)">${i.grupo}</td>
@@ -8274,7 +8693,6 @@ function renderEstTabela(env){
     <td>${i.qtd||'—'}</td>
     <td class="mono" style="color:var(--txt3)">${i.custUnit>0?fRFull(i.custUnit):'—'}</td>
     <td class="mono" style="font-weight:700">${fRFull(i.valor)}</td>
-    <td>${i.mand==='1'||i.tec==='SIM'?'<span class="tag tb2">Sim</span>':''}</td>
     <td style="font-size:10px;color:var(--txt3)">${i.uvenda||'—'}</td>
   </tr>`).join('');
 
@@ -8293,6 +8711,7 @@ function estTblLoadAll(btn,env,total){
   const tb=document.getElementById(`est-tbody-${env}`);
   if(tb) tb.innerHTML+=rows.slice(50).map(i=>`<tr>
     <td class="tdl mono" style="font-size:10px">${i.codL||i.cod}</td>
+    <td style="text-align:center">${i.tec==='SIM'?'<span class="tag tb2" style="font-size:9px">SIM</span>':'<span style="color:var(--txt3);font-size:10px">—</span>'}</td>
     <td class="tdl" style="max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${i.desc}">${i.desc}</td>
     <td class="tdl">${i.filial}</td>
     <td class="tdl" style="font-size:11px;color:var(--txt2)">${i.grupo}</td>
@@ -8301,7 +8720,6 @@ function estTblLoadAll(btn,env,total){
     <td>${i.qtd||'—'}</td>
     <td class="mono" style="color:var(--txt3)">${i.custUnit>0?fRFull(i.custUnit):'—'}</td>
     <td class="mono" style="font-weight:700">${fRFull(i.valor)}</td>
-    <td>${i.mand==='1'||i.tec==='SIM'?'<span class="tag tb2">Sim</span>':''}</td>
     <td style="font-size:10px;color:var(--txt3)">${i.uvenda||'—'}</td>
   </tr>`).join('');
   btn.parentElement.innerHTML=`<span style="color:var(--txt3)">Todos os ${total.toLocaleString('pt-BR')} itens</span>`;
@@ -8375,6 +8793,7 @@ function renderEstDetTabela(env){
   const tb=document.getElementById(`est-det-tbody-${env}`); if(!tb) return;
   tb.innerHTML=rows.slice(0,100).map(i=>`<tr>
     <td class="tdl mono" style="font-size:10px">${i.codL||i.cod}</td>
+    <td style="text-align:center">${i.tec==='SIM'?'<span class="tag tb2" style="font-size:9px">SIM</span>':'<span style="color:var(--txt3);font-size:10px">—</span>'}</td>
     <td class="tdl" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.desc}</td>
     <td style="color:${CURVA_COL[i.curva]||'var(--txt2)'};font-weight:700">${i.curva}</td>
     <td>${MOB_TAG[i.mobCls]||''}</td>
@@ -8397,20 +8816,25 @@ function getVendas60d(env){
   //   "normCod|*"          → qtd  (fallback sem filial)
   const map60 = new Map();
   if(!DB[env]||!DB[env].length) return map60;
-  const hoje = new Date();
-  const limite = new Date(hoje); limite.setDate(limite.getDate()-60);
-  const anoLim = limite.getFullYear();
-  const mesLim = limite.getMonth()+1;
-  DB[env].filter(r=>r._fonte==='dms').forEach(r=>{
+  const dmRows = DB[env].filter(r=>r._fonte==='dms');
+  if(!dmRows.length) return map60;
+  // Usar data máxima dos dados como referência
+  let maxAno=0, maxMes=0;
+  dmRows.forEach(r=>{ if(r.Ano>maxAno||(r.Ano===maxAno&&r.Mês_Num>maxMes)){maxAno=r.Ano;maxMes=r.Mês_Num;} });
+  const refDate = new Date(maxAno, maxMes-1, 1);
+  const limite  = new Date(refDate); limite.setDate(limite.getDate()-60);
+  const anoLim  = limite.getFullYear();
+  const mesLim  = limite.getMonth()+1;
+  dmRows.forEach(r=>{
     if(r.Ano < anoLim || (r.Ano===anoLim && r.Mês_Num < mesLim)) return;
     const cod = normCod(r.CodProduto||r.Codigo||r.cod||'');
     if(!cod) return;
     const fil = normFil(r.Filial);
-    const qty = +r.Qtde||1;
-    // chave com filial
+    const qtdRaw = +r.Qtde;
+    // Devolução negativa subtrai; sem qtde assume 1 unidade
+    const qty = (qtdRaw !== 0 && !isNaN(qtdRaw)) ? qtdRaw : 1;
     const k1 = cod+'|'+fil;
     map60.set(k1, (map60.get(k1)||0) + qty);
-    // chave sem filial (fallback)
     const k2 = cod+'|*';
     map60.set(k2, (map60.get(k2)||0) + qty);
   });
@@ -8419,16 +8843,23 @@ function getVendas60d(env){
 function getVendas6m(env){
   const map6 = new Map();
   if(!DB[env]||!DB[env].length) return map6;
-  const hoje = new Date();
-  const limite = new Date(hoje); limite.setMonth(limite.getMonth()-6);
-  const anoLim = limite.getFullYear();
-  const mesLim = limite.getMonth()+1;
-  DB[env].filter(r=>r._fonte==='dms').forEach(r=>{
+  const dmRows = DB[env].filter(r=>r._fonte==='dms');
+  if(!dmRows.length) return map6;
+  // Usar data máxima dos dados como referência (não "hoje")
+  // Assim funciona com dados históricos (2024, 2025, etc.)
+  let maxAno=0, maxMes=0;
+  dmRows.forEach(r=>{ if(r.Ano>maxAno||(r.Ano===maxAno&&r.Mês_Num>maxMes)){maxAno=r.Ano;maxMes=r.Mês_Num;} });
+  const refDate = new Date(maxAno, maxMes-1, 1);
+  const limite  = new Date(refDate); limite.setMonth(limite.getMonth()-6);
+  const anoLim  = limite.getFullYear();
+  const mesLim  = limite.getMonth()+1;
+  dmRows.forEach(r=>{
     if(r.Ano < anoLim || (r.Ano===anoLim && r.Mês_Num < mesLim)) return;
     const cod = normCod(r.CodProduto||r.Codigo||r.cod||'');
     if(!cod) return;
     const fil = normFil(r.Filial);
-    const qty = +r.Qtde||1;
+    const qtdRaw6 = +r.Qtde;
+    const qty = (qtdRaw6 !== 0 && !isNaN(qtdRaw6)) ? qtdRaw6 : 1;
     const k1 = cod+'|'+fil;
     map6.set(k1, (map6.get(k1)||0) + qty);
     const k2 = cod+'|*';
@@ -8439,19 +8870,26 @@ function getVendas6m(env){
 
 function getVendasNMeses(env, nMeses){
   // N meses configurável — exclui cancelamentos (já filtrados no parser)
+  // Usa data MÁXIMA dos dados como referência (não "hoje")
   var mapN = new Map();
   if(!DB[env]||!DB[env].length) return mapN;
-  var hoje = new Date();
-  var limite = new Date(hoje);
+  var dmRows = DB[env].filter(function(r){ return r._fonte==='dms'; });
+  if(!dmRows.length) return mapN;
+  var maxAno=0, maxMes=0;
+  dmRows.forEach(function(r){ if(r.Ano>maxAno||(r.Ano===maxAno&&r.Mês_Num>maxMes)){maxAno=r.Ano;maxMes=r.Mês_Num;} });
+  var refDate = new Date(maxAno, maxMes-1, 1);
+  var limite  = new Date(refDate);
   limite.setMonth(limite.getMonth() - nMeses);
   var anoLim = limite.getFullYear();
   var mesLim = limite.getMonth()+1;
-  DB[env].filter(function(r){ return r._fonte==='dms'; }).forEach(function(r){
+  dmRows.forEach(function(r){
     if(r.Ano < anoLim || (r.Ano===anoLim && r.Mês_Num < mesLim)) return;
     var cod = normCod(r.CodProduto||r.Codigo||r.cod||'');
     if(!cod) return;
     var fil = normFil(r.Filial);
-    var qty = Math.max(+r.Qtde||1, 0);
+    var qtdRawN = +r.Qtde;
+    // Devolução negativa subtrai do volume; sem qtde assume 1 unidade vendida
+    var qty = (qtdRawN !== 0 && !isNaN(qtdRawN)) ? qtdRawN : 1;
     var k1 = cod+'|'+fil;
     mapN.set(k1, (mapN.get(k1)||0) + qty);
     var k2 = cod+'|*';
@@ -8484,7 +8922,16 @@ var _estCruzMandSel  = { mb: new Set(['all']), mc: new Set(['all']) }; // mandat
 var _estCruzData     = { mb: [], mc: [] };
 
 function renderEstCruzamento(env){
-  var allItems = getEstFiltered(env);
+  // Cruzamento ignora filtro de CURVA do filterbar —
+  // precisa ver C/D (excesso) E A/B (demanda) ao mesmo tempo
+  // Aplica apenas: filial, mobilidade, grupo e técnico
+  var _fc = EST_F[env];
+  var allItems = getEstAllItems(env).filter(function(i){
+    return (_fc.filiais.size===0||_fc.filiais.has(i.filial))&&
+           (_fc.tec.size===0||_fc.tec.has(i.tec))&&
+           (_fc.mobs.size===0||_fc.mobs.has(i.mobCls))&&
+           (_fc.grupos.size===0||(!_fc.grupos.has('__NONE__')&&_fc.grupos.has(i.grupo||'Sem Grupo')));
+  });
   var filiais = [...new Set(allItems.map(function(i){ return i.filial; }))].sort();
 
   var wrap = document.getElementById('est-cruz-wrap-' + env);
@@ -8565,10 +9012,12 @@ function renderEstCruzamento(env){
     if(!byCode[cod]) byCode[cod] = { desc: i.desc, grupo: i.grupo, fils: {} };
     var fi = byCode[cod].fils;
     if(!fi[i.filial]){
-      fi[i.filial] = { curva: i.curva, valor: i.valor, qtd: i.qtd||0, dias: i.dias, mob: i.mobCls };
+      fi[i.filial] = { curva: i.curva, valor: i.valor, qtd: i.qtd||0, dias: i.dias, mob: i.mobCls, tec: i.tec||'NÃO' };
     } else {
       fi[i.filial].valor += i.valor;
       fi[i.filial].qtd   += (i.qtd||0);
+      // Se qualquer item da filial for técnico, marca como SIM
+      if(i.tec==='SIM') fi[i.filial].tec='SIM';
     }
   });
 
@@ -8593,14 +9042,14 @@ function renderEstCruzamento(env){
       var qtdEst = fils[fc2].qtd || 0;
       var custUnit = (qtdEst > 0 && fils[fc2].valor > 0) ? fils[fc2].valor / qtdEst : 0;
 
-      // Vendas últimos 60d na filial excesso
+      // Vendas últimos 6 meses na filial excesso (mais representativo)
       var demKeyCD = cod + '|' + normFil(fc2);
-      var vend60CD = v60map.get(demKeyCD) || v60map.get(cod+'|*') || 0;
-      // Projeção: média mensal dos últimos 60d × 2 meses futuros
-      var mediaMensal60d = vend60CD / 2;
-      var projecao2m = Math.ceil(mediaMensal60d * 2);
-      // Excesso = estoque − demanda 60d − projeção 2m futuros
-      var qtdExcesso = Math.max(Math.round(qtdEst - vend60CD - projecao2m), 0);
+      var vend6mCD = v6mmap.get(demKeyCD) || v6mmap.get(cod+'|*') || 0;
+      // Projeção 2m: média mensal dos últimos 6 meses × 2
+      var mediaMensal6m = vend6mCD / 6;
+      var projecao2m = Math.ceil(mediaMensal6m * 2);
+      // Excesso = estoque − projeção 2m (demanda esperada)
+      var qtdExcesso = Math.max(Math.round(qtdEst - projecao2m), 0);
 
       // Para cada filial AB, calcular capacidade de absorção
       // Capacidade = demanda proj. 2 meses − estoque atual da filial AB
@@ -8608,11 +9057,11 @@ function renderEstCruzamento(env){
         .filter(function(fa){ return fa !== fc2; })
         .map(function(fa){
           var demKeyAB = cod + '|' + normFil(fa);
-          var vend60AB = v60map.get(demKeyAB) || 0;
-          var media2mAB = Math.ceil((vend60AB / 2) * 2); // demanda 2m
+          var vend60AB = v6mmap.get(demKeyAB) || 0;
+          var media2mAB = Math.ceil((vend60AB / 6) * 2); // demanda 2m (média 6m × 2)
           var estAB = fils[fa] ? (fils[fa].qtd || 0) : 0;
           var capacidade = Math.max(media2mAB - estAB, 0);
-          return { fil: fa, curva: fils[fa]?fils[fa].curva:'?', capacidade: capacidade, vend60: vend60AB, estAB: estAB, proj2mAB: media2mAB };
+          return { fil: fa, curva: fils[fa]?fils[fa].curva:'?', capacidade: capacidade, vend6m: vend60AB, estAB: estAB, proj2mAB: media2mAB };
         })
         .filter(function(x){ return true; }); // mantém todas
 
@@ -8628,8 +9077,9 @@ function renderEstCruzamento(env){
         qtdCD: qtdEst,
         diasCD: fils[fc2].dias,
         mobCD: fils[fc2].mob,
+        tecCD: fils[fc2].tec||'NÃO',
         custUnit: custUnit,
-        vend60: vend60CD,
+        vend60: vend6mCD,
         projecao2m: projecao2m,
         qtdExcesso: qtdExcesso,
         filsABInfo: filsABInfo,
@@ -8688,13 +9138,14 @@ function renderEstCruzamento(env){
   var show = resultado.slice(0, 200);
   var hdr = '<thead><tr>'
     + '<th class="thl" style="width:100px">Código</th>'
+    + '<th style="color:var(--pur);white-space:nowrap;font-size:10px" title="Item pertence ao estoque técnico (mandatório)">Est. Téc.</th>'
     + '<th class="thl">Descrição</th>'
     + '<th class="thl">Grupo</th>'
     + '<th class="thl" style="color:var(--red)">Filial Excesso</th>'
     + '<th style="color:var(--red)">Curva</th>'
     + '<th style="color:var(--txt2)">Vlr Unit.</th>'
     + '<th style="color:var(--red)">Qtd Est.</th>'
-    + '<th style="color:var(--ora)">Vnd 60d</th>'
+    + '<th style="color:var(--ora)">Vnd 6m</th>'
     + '<th style="color:var(--acc)" title="Projeção demanda 2 meses — filial excesso">Proj. 2m</th>'
     + '<th style="color:var(--acc)">Exc. Qtd</th>'
     + '<th style="color:var(--red);border-right:2px solid var(--brd)">Exc. R$</th>'
@@ -8726,6 +9177,7 @@ function renderEstCruzamento(env){
     }).join(', ');
     return '<tr>'
       + '<td class="tdl mono" style="font-size:10px">' + r.cod + '</td>'
+      + '<td style="text-align:center">' + (r.tecCD==='SIM'?'<span class="tag tb2" style="font-size:9px">SIM</span>':'<span style="color:var(--txt3);font-size:10px">—</span>') + '</td>'
       + '<td class="tdl" style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + r.desc + '">' + r.desc + '</td>'
       + '<td class="tdl" style="font-size:11px;color:var(--txt2)">' + r.grupo + '</td>'
       + '<td class="tdl" style="font-weight:600">' + r.filCD + '</td>'
@@ -8753,10 +9205,52 @@ function renderEstCruzamento(env){
 function exportEstCruzCSV(env){
   var data = _estCruzData[env] || [];
   if(!data.length){ alert('Nenhuma oportunidade gerada. Aplique os filtros primeiro.'); return; }
-  var hdr = 'Código,Descrição,Grupo,Filial C/D,Curva,Valor C/D,Qtd C/D,Dias C/D,Filial A/B,Curva A/B,Valor A/B,Qtd A/B';
-  var rows = data.map(function(r){
-    return [r.cod, '"'+r.desc+'"', '"'+r.grupo+'"', r.filCD, r.curvaCD, r.valCD.toFixed(2), r.qtdCD||0, r.diasCD, r.filAB, r.curvaAB, r.valAB.toFixed(2), r.qtdAB||0].join(',');
+
+  // UMA LINHA por item — filiais demanda separadas por | (pipe) dentro da mesma célula
+  // Assim o Excel não duplica linhas e os totais ficam corretos
+  var hdr = [
+    'Código','Descrição','Grupo','Est. Técnico',
+    'Filial Excesso','Curva','Vlr Unit.','Qtd Estoque','Vnd 6m','Proj 2m','Exc Qtd','Exc R$',
+    'Filial Demanda (|)','Curva Demanda (|)','Estoque AB (|)','Prev Dem 2m (|)','Capac Receber (|)'
+  ].join(',');
+
+  var rows = [];
+  data.forEach(function(r){
+    var filsAB = r.filsABInfo && r.filsABInfo.length
+      ? r.filsABInfo
+      : [{fil:r.filAB||'—', curva:r.curvaAB||'—', estAB:0, proj2mAB:0, capacidade:0}];
+
+    var custUnit = r.custUnit || 0;
+    var excRS    = r.qtdExcesso > 0 && custUnit > 0 ? (r.qtdExcesso * custUnit).toFixed(2) : '0';
+
+    // Juntar múltiplas filiais com | dentro da célula (entre aspas para proteger o CSV)
+    var filDem   = filsAB.map(function(x){ return x.fil||'—'; }).join(' | ');
+    var curvaDem = filsAB.map(function(x){ return x.curva||'—'; }).join(' | ');
+    var estAB    = filsAB.map(function(x){ return x.estAB||0; }).join(' | ');
+    var prevDem  = filsAB.map(function(x){ return x.proj2mAB||0; }).join(' | ');
+    var capac    = filsAB.map(function(x){ return x.capacidade>0?'+'+x.capacidade:x.capacidade||0; }).join(' | ');
+
+    rows.push([
+      r.cod,
+      '"' + (r.desc||'').replace(/"/g,"''") + '"',
+      '"' + (r.grupo||'').replace(/"/g,"''") + '"',
+      r.tecCD||'NÃO',
+      r.filCD,
+      r.curvaCD,
+      custUnit.toFixed(2),
+      r.qtdCD||0,
+      r.vend60||0,
+      r.projecao2m||0,
+      r.qtdExcesso||0,
+      excRS,
+      '"' + filDem   + '"',
+      '"' + curvaDem + '"',
+      '"' + estAB    + '"',
+      '"' + prevDem  + '"',
+      '"' + capac    + '"'
+    ].join(','));
   });
+
   var csv = [hdr].concat(rows).join('\n');
   _downloadCSVRaw('cruzamento_curvas_'+env+'_'+new Date().toISOString().slice(0,10)+'.csv', csv);
 }
@@ -9020,16 +9514,46 @@ function exportEstVsFatCSV(env){
   _downloadCSVRaw('estoque_vs_fat_'+tab+'_'+env+'_'+new Date().toISOString().slice(0,10)+'.csv', csv);
 }
 
-// ── Export CSV (full items) ──────────────────────────────────
+// ── Export CSV (full items) — mesma ordem de colunas da tabela visual ──
 function exportEstItensCSV(env){
+  // Respeita os mesmos filtros da tabela: busca, ordenação, EST.TÉCNICO, curva, grupo, mob, filial
   const items=getEstFiltered(env);
   const search=(document.getElementById(`est-search-${env}`)?.value||'').toLowerCase().trim();
   const sortVal=document.getElementById(`est-sort-${env}`)?.value||'valor_desc';
   let rows=[...items];
-  if(search) rows=rows.filter(i=>(i.codL||i.cod).toLowerCase().includes(search)||i.desc.toLowerCase().includes(search)||i.grupo.toLowerCase().includes(search));
-  rows.sort((a,b)=>sortVal==='valor_desc'?b.valor-a.valor:sortVal==='dias_desc'?b.dias-a.dias:sortVal==='dias_asc'?a.dias-b.dias:b.qtd-a.qtd);
-  const hdr='Período,Filial,Código,Descrição,Grupo,Curva,Mobilidade,Qtd,Custo Unit.,Valor Total,Dias Estoque,Est.Técnico,Últ.Venda';
-  const body=rows.map(i=>[i._periodo,i.filial,i.codL||i.cod,`"${i.desc}"`,`"${i.grupo}"`,i.curva,i.mobCls,i.qtd,(i.custUnit||0).toFixed(2),i.valor.toFixed(2),i.dias,i.tec,i.uvenda].join(','));
+  // Filtro de busca — igual à tabela
+  if(search) rows=rows.filter(i=>
+    (i.codL||i.cod).toLowerCase().includes(search)||
+    i.desc.toLowerCase().includes(search)||
+    i.grupo.toLowerCase().includes(search)||
+    (i.forn||'').toLowerCase().includes(search)
+  );
+  // Ordenação — igual à tabela
+  rows.sort((a,b)=>
+    sortVal==='valor_desc'?b.valor-a.valor:
+    sortVal==='dias_desc' ?b.dias-a.dias:
+    sortVal==='dias_asc'  ?a.dias-b.dias:
+    b.qtd-a.qtd
+  );
+  // Colunas na mesma ordem da tabela visual:
+  // Código | Est.Técnico | Descrição | Filial | Grupo | Curva | Mobilidade | Qtd | Custo Unit. | Valor Total | Dias Est. | Últ.Venda | Período
+  const hdr='Código,Est.Técnico,Descrição,Filial,Grupo,Curva,Mobilidade,Qtd,Custo Unit. (R$),Valor Total (R$),Dias Estoque,Últ.Venda,Período';
+  const mob={rapido:'Rápido',lento:'Lento',parado:'Parado'};
+  const body=rows.map(i=>[
+    i.codL||i.cod,
+    i.tec||'NÃO',
+    `"${(i.desc||'').replace(/"/g,"''")}"`,
+    i.filial,
+    `"${(i.grupo||'').replace(/"/g,"''")}"`,
+    i.curva,
+    mob[i.mobCls]||i.mobCls||'—',
+    i.qtd||0,
+    (i.custUnit||0).toFixed(2),
+    i.valor.toFixed(2),
+    i.dias||0,
+    i.uvenda||'—',
+    i._periodo||'—'
+  ].join(','));
   const csv=[hdr,...body].join('\n');
   _downloadCSVRaw(`itens_estoque_${env}_${new Date().toISOString().slice(0,10)}.csv`, csv);
 }
@@ -9048,6 +9572,503 @@ window.addEventListener('resize',()=>{
   Object.keys(_ch).forEach(k=>delete _ch[k]);
   renderAll('mb');renderAll('mc');
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// MÓDULO GOOGLE SHEETS — Integração com planilha pública como fonte de dados
+// ═══════════════════════════════════════════════════════════════════════
+
+const GS_KEY = 'dn_gsheets_config_v1';
+const GS_CACHE_KEY = 'dn_gsheets_cache_v1';
+
+// Configuração padrão — usuário preenche com suas URLs
+let GS_CONFIG = {
+  // ── Faturamento ─────────────────────────────────
+  dms_mb:    '', // DMS Peças MB  → aba DMS_MB
+  dms_mc:    '', // DMS Pneus MC  → aba DMS_MC
+  dre:       '', // DRE Gerencial → aba DRE  (formato: Filial|Tipo|Jan..Dez)
+  os_tipos:  '', // Por Tipo de OS → aba OS_TIPOS
+  metas_mb:  '', // Metas/Orçamento MB → aba METAS_MB
+  metas_mc:  '', // Metas/Orçamento MC → aba METAS_MC
+  // ── Estoque ─────────────────────────────────────
+  estoque:   '', // Estoque MB → aba ESTOQUE_MB
+  estoque_mc:'', // Estoque MC → aba ESTOQUE_MC (opcional)
+  // ── Área Operacional ─────────────────────────────
+  cidades:   '', // Mapa de Cidades → aba CIDADES  (colunas: empresa, cidade)
+  // ── Indicadores StarClass ────────────────────────
+  starclass:  '', // PDFs StarClass → aba STARCLASS (pré-extraído)
+};
+
+// Carregar config salva
+(()=>{
+  try {
+    const saved = localStorage.getItem(GS_KEY);
+    if(saved) GS_CONFIG = Object.assign({}, GS_CONFIG, JSON.parse(saved));
+    gsUpdateUI();
+  } catch(e){}
+})();
+
+function gsUpdateUI(){
+  const hasAny = Object.values(GS_CONFIG).some(v=>v.trim());
+  const btn = document.getElementById('btn-gs-refresh');
+  if(btn) btn.style.display = hasAny ? '' : 'none';
+  // Badge indicador de conexão no botão de config
+  const cfgBtn = document.getElementById('btn-gs-config');
+  if(cfgBtn){
+    cfgBtn.textContent = hasAny ? '🔗 GSheets ✅' : '🔗 Google Sheets';
+    cfgBtn.style.color = hasAny ? '#34a853' : '#34a853';
+  }
+}
+
+function gsOpenModal(html){
+  let ov = document.getElementById('gs-modal-ov');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'gs-modal-ov';
+    ov.style.cssText='position:fixed;inset:0;background:#0009;z-index:9999;display:flex;align-items:center;justify-content:center';
+    ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = html;
+}
+
+// Todas as fontes com labels e nomes de aba sugeridos
+const GS_FIELDS = [
+  // key, label, aba sugerida, obrigatório
+  {k:'dms_mb',    lbl:'📊 DMS Peças MB',          aba:'DMS_MB',      req:true,  grp:'Faturamento MB'},
+  {k:'dre',       lbl:'📈 DRE Gerencial',          aba:'DRE',         req:true,  grp:'Faturamento MB'},
+  {k:'os_tipos',  lbl:'🔧 Por Tipo de OS',         aba:'OS_TIPOS',    req:false, grp:'Faturamento MB'},
+  {k:'metas_mb',  lbl:'🎯 Metas / Orçamento MB',   aba:'METAS_MB',    req:false, grp:'Faturamento MB'},
+  {k:'dms_mc',    lbl:'📊 DMS Pneus MC',           aba:'DMS_MC',      req:false, grp:'Pneus MC'},
+  {k:'metas_mc',  lbl:'🎯 Metas / Orçamento MC',   aba:'METAS_MC',    req:false, grp:'Pneus MC'},
+  {k:'estoque',   lbl:'📦 Estoque MB',              aba:'ESTOQUE_MB',  req:true,  grp:'Estoque'},
+  {k:'estoque_mc',lbl:'📦 Estoque MC',              aba:'ESTOQUE_MC',  req:false, grp:'Estoque'},
+  {k:'cidades',   lbl:'🗺 Mapa de Cidades',          aba:'CIDADES',     req:false, grp:'Área Operacional'},
+  {k:'starclass', lbl:'⭐ StarClass (pré-extraído)',aba:'STARCLASS',   req:false, grp:'Indicadores'},
+];
+
+function openGSConfig(){
+  const grupos = [...new Set(GS_FIELDS.map(f=>f.grp))];
+  const fieldsHtml = grupos.map(grp=>{
+    const fields = GS_FIELDS.filter(f=>f.grp===grp);
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:10px;font-weight:800;color:var(--acc);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--brd)">${grp}</div>
+      ${fields.map(f=>{
+        const val = GS_CONFIG[f.k]||'';
+        const ok = val.includes('docs.google.com');
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:3px">
+            ${ok?'<span style="color:var(--grn)">✅</span>':'<span style="color:var(--txt3)">○</span>'}
+            ${f.lbl}
+            <span style="font-size:9px;color:var(--txt3);font-weight:400">aba: ${f.aba}</span>
+            ${f.req?'<span style="font-size:9px;color:var(--ora);font-weight:700">obrigatório</span>':'<span style="font-size:9px;color:var(--txt3)">opcional</span>'}
+          </div>
+          <input id="gs-input-${f.k}" type="text" value="${val}"
+            placeholder="https://docs.google.com/spreadsheets/d/.../pub?gid=...&output=csv"
+            style="width:100%;background:var(--card2);border:1px solid ${ok?'var(--grn)':'var(--brd)'};border-radius:7px;padding:7px 10px;font-size:10px;color:var(--txt);outline:none;box-sizing:border-box"
+            oninput="this.style.borderColor=this.value.includes('docs.google.com')?'var(--grn)':'var(--brd)'">
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  gsOpenModal(`
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:24px 28px;width:680px;max-width:96vw;max-height:92vh;overflow-y:auto">
+      <div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:4px">🔗 Configurar Google Sheets</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">Cole a URL CSV de cada aba da sua planilha. Campos marcados como <span style="color:var(--ora)">obrigatórios</span> são necessários para o funcionamento básico.</div>
+
+      <div style="background:var(--card2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:10px;line-height:1.9;color:var(--txt2)">
+        <div style="font-weight:700;color:var(--acc);margin-bottom:4px">📋 Como obter cada URL:</div>
+        <div>1. Abra a planilha → menu <strong>Arquivo → Compartilhar → Publicar na Web</strong></div>
+        <div>2. Selecione a <strong>aba desejada</strong> (ex: DMS_MB) + formato <strong>Valores separados por vírgula (.csv)</strong></div>
+        <div>3. Clique <strong>Publicar</strong> → copie a URL → cole no campo correspondente abaixo</div>
+        <div>4. Repita para cada aba e clique <strong>💾 Salvar</strong></div>
+      </div>
+
+      ${fieldsHtml}
+
+      <div style="display:flex;gap:10px;margin-top:8px;position:sticky;bottom:0;background:var(--card);padding-top:10px">
+        <button onclick="gsSaveConfig()" style="flex:1;background:#34a853;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">💾 Salvar Configuração</button>
+        <button onclick="document.getElementById('gs-modal-ov').remove()" style="background:var(--card2);color:var(--txt2);border:1px solid var(--brd);border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer">Fechar</button>
+      </div>
+      <div id="gs-config-status" style="margin-top:8px;font-size:11px;text-align:center"></div>
+    </div>
+  `);
+}
+
+function gsSaveConfig(){
+  GS_FIELDS.forEach(f=>{
+    const el = document.getElementById('gs-input-'+f.k);
+    if(el) GS_CONFIG[f.k] = el.value.trim();
+  });
+  try { localStorage.setItem(GS_KEY, JSON.stringify(GS_CONFIG)); } catch(e){}
+  gsUpdateUI();
+  const st = document.getElementById('gs-config-status');
+  if(st){ st.style.color='var(--grn)'; st.textContent='✅ Configuração salva! Clique em 🔄 Atualizar Dados para carregar.'; }
+}
+
+// ── Buscar CSV do Google Sheets via fetch ──────────────────────
+async function gsFetchCSV(url){
+  // Converte URL de publicação para URL direta de CSV
+  // Adiciona timestamp para evitar cache do browser
+  const sep = url.includes('?') ? '&' : '?';
+  const fetchUrl = url + sep + 't=' + Date.now();
+  const resp = await fetch(fetchUrl);
+  if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return await resp.text();
+}
+
+// ── Parser CSV → array de objetos ─────────────────────────────
+function gsParseCSV(csvText){
+  const lines = csvText.split(/\r?\n/);
+  if(lines.length < 2) return [];
+  // Detectar header — linha que contém 'Filial' ou 'Emissão' ou 'Código'
+  let hdrIdx = 0;
+  for(let i=0;i<Math.min(5,lines.length);i++){
+    if(/filial|emiss|c.digo|código/i.test(lines[i])){ hdrIdx=i; break; }
+  }
+  const headers = gsCSVLine(lines[hdrIdx]);
+  const rows = [];
+  for(let i=hdrIdx+1;i<lines.length;i++){
+    const vals = gsCSVLine(lines[i]);
+    if(!vals.length||vals.every(v=>!v)) continue;
+    const obj = {};
+    headers.forEach((h,idx)=>{ obj[h]=vals[idx]||''; });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+// Parser de linha CSV respeitando aspas
+function gsCSVLine(line){
+  const result=[];
+  let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){ inQ=!inQ; }
+    else if(c===','&&!inQ){ result.push(cur.trim()); cur=''; }
+    else { cur+=c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ── Processar DMS vindo do Google Sheets ──────────────────────
+async function gsLoadDMS(env){
+  const url = env==='mb' ? GS_CONFIG.dms_mb : GS_CONFIG.dms_mc;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  if(!rows.length) return 0;
+  const parsed = parseDMSRows(rows, env);
+  if(parsed && parsed.length){
+    DB[env] = parsed;
+    ANOS_LIST[env] = [...new Set(parsed.map(r=>r.Ano).filter(Boolean))].sort();
+    return parsed.length;
+  }
+  return 0;
+}
+
+// ── Processar Estoque vindo do Google Sheets ──────────────────
+async function gsLoadEstoque(){
+  const url = GS_CONFIG.estoque;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  if(!rows.length) return 0;
+
+  // Agrupar por filial para criar snapshots
+  const byFilial = {};
+  rows.forEach(row=>{
+    const filialRaw = row['Filial']||row['filial']||'';
+    const filial = mapFilial(filialRaw)||filialRaw;
+    if(!filial) return;
+    if(!byFilial[filial]) byFilial[filial]=[];
+    byFilial[filial].push(row);
+  });
+
+  // Converter para o formato de snapshot
+  const hoje = new Date();
+  const perioKey = `${hoje.getFullYear()}_${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  let totalItens = 0;
+
+  // Usar handleEstFile internamente — simular upload para cada filial
+  ['mb','mc'].forEach(env=>{
+    const allRows = rows;
+    if(!allRows.length) return;
+
+    // Usar o mesmo parser do handleEstFile mas com dados do GSheets
+    const hdr = Object.keys(allRows[0]);
+    const ci = {};
+    hdr.forEach((h,i)=>{
+      const u = h.toUpperCase();
+      if(u==='FILIAL') ci.filial=h;
+      else if(u.includes('CUSTO TOTAL')) ci.valor=h;
+      else if(u==='DIAS EM ESTOQUE'||u==='DIAS') ci.dias=h;
+      else if(u==='MOBILIDADE'||u==='MOB') ci.mob=h;
+      else if(u.includes('MANDATOR')||u.includes('ESTOQUE TÉC')||u.includes('ESTOQUE TEC')||u.includes('OBRIGAT')) ci.tec=h;
+      else if(u.includes('DESCRIÇÃO')||u.includes('DESCRICAO')||u==='DESC') ci.desc=h;
+      else if(u==='FORNECEDOR') ci.forn=h;
+      else if(u==='ESTOQUE'||u==='QUANTIDADE'||u==='QTD') ci.qtd=h;
+      else if(u==='CURVA') ci.curva=h;
+      else if(u==='GRUPO') ci.grupo=h;
+      else if(u.includes('ÚLTIMA VENDA')||u.includes('ULTIMA VENDA')) ci.ultvenda=h;
+      else if(u==='CUSTO FORNECEDOR') ci.custoForn=h;
+      else if(u==='CUSTO CONTÁBIL'||u==='CUSTO CONTABIL') ci.custoContab=h;
+      else if(h==='Código') ci.codLimpo=h;
+      else if(h==='AjusteCódigo') ci.codigo=h;
+    });
+
+    const items = [];
+    allRows.forEach(row=>{
+      const filialRaw = ci.filial ? (row[ci.filial]||'') : '';
+      if(!filialRaw) return;
+      const filial = mapFilial(String(filialRaw).trim())||String(filialRaw).trim();
+      const valor = ci.valor ? parseFloat(String(row[ci.valor]||'').replace(',','.'))||0 : 0;
+      const dias = ci.dias ? parseFloat(row[ci.dias])||0 : 0;
+      const mob = ci.mob ? String(row[ci.mob]||'').trim() : '';
+      const curva = ci.curva ? String(row[ci.curva]||'').trim().toUpperCase() : '';
+      const grupo = ci.grupo ? String(row[ci.grupo]||'').trim().replace(/\s*\[\d+\]\s*$/,'').replace(/^Mbc\s*\/\s*/i,'').trim() : '';
+      const cod = ci.codigo ? String(row[ci.codigo]||'').trim() : '';
+      const codL = ci.codLimpo ? normCod(String(row[ci.codLimpo]||'')) : normCod(cod);
+      const desc = ci.desc ? String(row[ci.desc]||'').trim() : '';
+      const forn = ci.forn ? String(row[ci.forn]||'').trim() : '';
+      const qtd = ci.qtd ? parseFloat(row[ci.qtd])||0 : 0;
+      const tecRaw = ci.tec ? String(row[ci.tec]||'').trim().toUpperCase() : '';
+      const tec = ['SIM','S','1','TRUE','T','X'].includes(tecRaw)?'SIM':'NÃO';
+      const custUnit = qtd>0?valor/qtd:0;
+      const mobCls = mob.startsWith('1')?'rapido':mob.startsWith('2')?'lento':mob.startsWith('3')?'parado':'outro';
+      items.push({filial,valor,dias,mob,mobCls,curva,grupo,cod,codL,desc,forn,qtd,tec,custUnit,_periodo:perioKey});
+    });
+
+    if(items.length){
+      EST_DATA[env].snapshots[perioKey] = items;
+      totalItens = items.length;
+      saveEstState();
+      initEstFilters(env);
+      renderEstoque(env);
+    }
+  });
+  return totalItens;
+}
+
+// ── Processar DRE vindo do Google Sheets ──────────────────────
+async function gsLoadDRE(){
+  const url = GS_CONFIG.dre;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  // DRE tem estrutura especial — cada filial em blocos identificados pela coluna Filial
+  // Processar como linhas normais e adicionar ao DB com _fonte='dre'
+  if(!rows.length) return 0;
+  // Usar parseDRERows se disponível, ou adicionar direto
+  ['mb','mc'].forEach(env=>{
+    const dreRows = rows.filter(r=>{
+      // Filtrar linhas válidas de DRE
+      return r['Filial']||r['filial']||r['FILIAL'];
+    });
+    if(dreRows.length){
+      // Adicionar ao DB mantendo dados DMS existentes
+      const existingDMS = (DB[env]||[]).filter(r=>r._fonte!=='dre');
+      DB[env] = [...existingDMS, ...dreRows.map(r=>Object.assign({},r,{_fonte:'dre'}))];
+    }
+  });
+  return rows.length;
+}
+
+// ── Atualizar tudo do Google Sheets ───────────────────────────
+// ── Carregar Tipo OS do Google Sheets ─────────────────────────
+async function gsLoadOSTipos(){
+  const url = GS_CONFIG.os_tipos;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  if(!rows.length) return 0;
+  // OS rows têm _fonte==='os' — parsear usando a mesma lógica do upload
+  const parsed = rows.map(r => Object.assign({}, r, { _fonte: 'os' }));
+  // Remover OS anteriores do GS e adicionar novos
+  ['mb','mc'].forEach(env => {
+    DB[env] = (DB[env]||[]).filter(r => r._fonte !== 'os' || r._gsImport !== true);
+    const osEnv = parsed.filter(r => {
+      const c = String(r.Canal||r.Ambiente||'').toLowerCase();
+      return env === 'mb' ? !c.includes('mc') : c.includes('mc');
+    }).map(r => Object.assign({}, r, { _gsImport: true }));
+    DB[env].push(...osEnv);
+    syncOsTypes(DB[env]);
+    syncOSFromFile(DB[env]);
+  });
+  return parsed.length;
+}
+
+// ── Carregar Metas do Google Sheets ───────────────────────────
+async function gsLoadMetas(env){
+  const url = env === 'mb' ? GS_CONFIG.metas_mb : GS_CONFIG.metas_mc;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  if(!rows.length) return 0;
+  // Formato esperado: Filial | Ano | Mes | Indicador | Valor
+  let count = 0;
+  rows.forEach(r => {
+    const filial = r.Filial || r.filial || '';
+    const ano    = parseInt(r.Ano || r.ano || 0);
+    const mes    = parseInt(r.Mes || r.mes || r.Mês || 0);
+    const ind    = String(r.Indicador || r.ind || '').trim();
+    const val    = parseFloat(String(r.Valor || r.valor || '0').replace(',', '.')) || 0;
+    if(!filial || !ano || !mes || !ind) return;
+    if(!METAS[env]) METAS[env] = {};
+    const key = `${filial}|${ano}|${mes}|${ind}`;
+    METAS[env][key] = val;
+    count++;
+  });
+  return count;
+}
+
+// ── Carregar Estoque MC do Google Sheets ──────────────────────
+async function gsLoadCidades(){
+  const url = GS_CONFIG.cidades;
+  if(!url) return 0;
+  const csv = await gsFetchCSV(url);
+  const rows = gsParseCSV(csv);
+  if(!rows.length) return 0;
+  // Mesmo formato do arquivo de upload: colunas empresa e cidade
+  // Reusar _parseCidadeCSV mas com os dados já parseados
+  const _baseSet = new Set(CIDADE_BASE.map(([c])=>c));
+  // Resetar CIDADE_MAP e carregar base
+  Object.keys(CIDADE_MAP).forEach(k=>delete CIDADE_MAP[k]);
+  CIDADE_BASE.forEach(([c,f])=>{ CIDADE_MAP[c]={filial:f,areaOp:true}; });
+  let count = Object.keys(CIDADE_MAP).length;
+  rows.forEach(r=>{
+    const empresa = String(r.empresa||r.Empresa||r.Filial||r.filial||'').toUpperCase();
+    const cidade  = String(r.cidade||r.Cidade||'').toUpperCase()
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    if(!cidade) return;
+    if(_baseSet.has(cidade)) return; // CIDADE_BASE tem prioridade
+    const filial = _detectFilialCidade(empresa, cidade);
+    CIDADE_MAP[cidade] = {filial, areaOp:true};
+    count++;
+  });
+  // Atualizar contador visual
+  const cidEl = document.getElementById('cid-count');
+  if(cidEl) cidEl.textContent = Object.keys(CIDADE_MAP).length + ' cidades';
+  return count;
+}
+
+async function gsLoadEstoqueMC(){
+  const url = GS_CONFIG.estoque_mc;
+  if(!url) return 0;
+  // Reusar gsLoadEstoque mas para mc
+  const origEst = GS_CONFIG.estoque;
+  GS_CONFIG.estoque = url;
+  // Temporarily set estoque for MC
+  const result = await gsLoadEstoqueEnv('mc');
+  GS_CONFIG.estoque = origEst;
+  return result;
+}
+
+async function gsRefreshAll(){
+  const btn = document.getElementById('btn-gs-refresh');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Buscando...'; }
+
+  const hasConfig = Object.values(GS_CONFIG).some(v=>v&&v.trim());
+  if(!hasConfig){
+    openGSConfig();
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Atualizar Dados'; }
+    return;
+  }
+
+  gsOpenModal(`
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:32px 40px;text-align:center;min-width:340px">
+      <div style="font-size:24px;margin-bottom:12px">🔄</div>
+      <div style="font-weight:700;color:var(--txt);margin-bottom:8px">Buscando dados do Google Sheets...</div>
+      <div id="gs-progress-msg" style="font-size:12px;color:var(--txt3);min-height:20px"></div>
+      <div style="margin-top:16px;background:var(--card2);border-radius:6px;height:6px;overflow:hidden">
+        <div id="gs-progress-bar" style="height:6px;background:var(--mb);width:0%;transition:width 0.4s;border-radius:6px"></div>
+      </div>
+    </div>
+  `);
+
+  const setP = (pct, msg) => {
+    const bar=document.getElementById('gs-progress-bar'), msgEl=document.getElementById('gs-progress-msg');
+    if(bar) bar.style.width=pct+'%';
+    if(msgEl) msgEl.textContent=msg;
+  };
+
+  // Todos os campos configurados
+  const steps = [
+    {k:'dms_mb',     pct:10, msg:'Carregando DMS Peças MB...',      fn:()=>gsLoadDMS('mb')},
+    {k:'dms_mc',     pct:22, msg:'Carregando DMS Pneus MC...',      fn:()=>gsLoadDMS('mc')},
+    {k:'dre',        pct:35, msg:'Carregando DRE Gerencial...',      fn:()=>gsLoadDRE()},
+    {k:'os_tipos',   pct:48, msg:'Carregando Tipos de OS...',        fn:()=>gsLoadOSTipos()},
+    {k:'metas_mb',   pct:58, msg:'Carregando Metas MB...',           fn:()=>gsLoadMetas('mb')},
+    {k:'metas_mc',   pct:66, msg:'Carregando Metas MC...',           fn:()=>gsLoadMetas('mc')},
+    {k:'estoque',    pct:78, msg:'Carregando Estoque MB...',         fn:()=>gsLoadEstoque()},
+    {k:'estoque_mc', pct:88, msg:'Carregando Estoque MC...',         fn:()=>gsLoadEstoqueMC()},
+    {k:'cidades',    pct:93, msg:'Carregando Mapa de Cidades...',      fn:()=>gsLoadCidades()},
+  ];
+
+  const results = {};
+  const erros   = [];
+
+  try {
+    for(const s of steps){
+      if(!GS_CONFIG[s.k] || !GS_CONFIG[s.k].trim()) continue;
+      setP(s.pct, s.msg);
+      try { results[s.k] = await s.fn(); }
+      catch(e){ erros.push(s.msg.replace('...','') + ': ' + e.message); results[s.k]=0; }
+    }
+    setP(95, 'Salvando e renderizando...');
+    saveState();
+    ['mb','mc'].forEach(env => renderAll(env));
+    if(Object.keys(EST_DATA.mb.snapshots).length) { initEstFilters('mb'); renderEstoque('mb'); }
+    if(Object.keys(EST_DATA.mc.snapshots).length) { initEstFilters('mc'); renderEstoque('mc'); }
+    setP(100, '');
+    localStorage.setItem('dn_gs_lastrefresh', new Date().toISOString());
+  } catch(e){
+    erros.push('Erro geral: '+e.message);
+  }
+
+  // Modal de resultado
+  const linhas = GS_FIELDS.filter(f=>GS_CONFIG[f.k]&&GS_CONFIG[f.k].trim()).map(f=>{
+    const v = results[f.k];
+    const ok = v > 0;
+    return `<div style="padding:3px 0;color:${ok?'var(--grn)':'var(--txt3)'}">
+      ${ok?'✅':'○'} ${f.lbl} — ${v!=null?Number(v).toLocaleString('pt-BR')+' registros':'não carregado'}
+    </div>`;
+  }).join('');
+
+  const ov = document.getElementById('gs-modal-ov');
+  if(ov) ov.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:28px 32px;text-align:center;min-width:360px;max-width:500px">
+      <div style="font-size:28px;margin-bottom:12px">${erros.length?'⚠️':'✅'}</div>
+      <div style="font-weight:800;color:var(--txt);font-size:15px;margin-bottom:16px">
+        ${erros.length?'Concluído com avisos':'Dados atualizados com sucesso!'}
+      </div>
+      <div style="background:var(--card2);border-radius:8px;padding:14px;text-align:left;font-size:12px;margin-bottom:16px">
+        ${linhas}
+        ${erros.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);color:var(--red)">⚠️ ${erros.join('<br>⚠️ ')}</div>`:''}
+      </div>
+      <button onclick="document.getElementById('gs-modal-ov').remove()"
+        style="background:var(--mb);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer">OK</button>
+    </div>
+  `;
+  if(btn){ btn.disabled=false; btn.textContent='🔄 Atualizar Dados'; }
+}
+
+// Mostrar último refresh no rodapé se disponível
+(()=>{
+  const last = localStorage.getItem('dn_gs_lastrefresh');
+  if(last){
+    try {
+      const d = new Date(last);
+      const fmt = d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const el = document.getElementById('gs-last-refresh');
+      if(el) el.textContent = '🔄 Último sync: '+fmt;
+    } catch(e){}
+  }
+})();
+
+// ── FIM MÓDULO GOOGLE SHEETS ──────────────────────────────────
+
 </script>
 </body>
 </html>
